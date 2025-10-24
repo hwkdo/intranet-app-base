@@ -2,6 +2,9 @@
 
 namespace Hwkdo\IntranetAppBase;
 
+use Hwkdo\IntranetAppBase\Livewire\AdminSettings;
+use Hwkdo\IntranetAppBase\Livewire\UserSettings;
+use Livewire\Livewire;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -21,5 +24,11 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             ->hasMigrations()
                 ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncAppSettings::class)
                 ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class);
+    }
+
+    public function bootingPackage()
+    {
+        Livewire::component('intranet-app-base::user-settings', UserSettings::class);
+        Livewire::component('intranet-app-base::admin-settings', AdminSettings::class);
     }
 }
