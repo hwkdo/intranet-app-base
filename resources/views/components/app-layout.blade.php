@@ -5,7 +5,16 @@
     'navItems' => []
 ])
 
-<div class="flex items-start max-md:flex-col">
+<div class="w-full">
+    @if($heading)
+        <flux:heading>{{ $heading }}</flux:heading>
+    @endif
+    @if($subheading)
+        <flux:subheading>{{ $subheading }}</flux:subheading>
+    @endif
+</div>
+
+<div class="flex items-start max-md:flex-col mt-5">
     <div class="mr-10 w-full pb-4 md:w-[220px]">
         <flux:navlist>
             @foreach($navItems as $navItem)
@@ -24,16 +33,7 @@
     <flux:separator class="md:hidden" />
 
     <div class="flex-1 self-stretch max-md:pt-6">
-        @if($heading)
-            <flux:heading>{{ $heading }}</flux:heading>
-        @endif
-        @if($subheading)
-            <flux:subheading>{{ $subheading }}</flux:subheading>
-        @endif
-
-        <div class="mt-5 w-full">
-            {{ $slot }}
-        </div>
+        {{ $slot }}
     </div>
 </div>
 
