@@ -15,10 +15,11 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
          * More info: https://github.com/spatie/laravel-package-tools
          */
         $package
-            ->name('intranet-app-base');
-            #->hasConfigFile()
-            #->hasViews()
-            #->hasMigration('create_intranet_app_base_table')
-            #->hasCommand(IntranetAppBaseCommand::class);
+            ->name('intranet-app-base')
+            ->hasConfigFile()
+            ->hasViews()
+            ->hasMigrations()
+                ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncAppSettings::class)
+                ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class);
     }
 }
