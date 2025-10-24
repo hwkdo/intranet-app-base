@@ -3,16 +3,16 @@
     'appName' => '',
     'appDescription' => '',
     'welcomeTitle' => null,
-    'welcomeDescription' => null
+    'welcomeDescription' => null,
+    'navItems' => []
 ])
 
 @php
     $welcomeTitle = $welcomeTitle ?? "Willkommen in der {$appName}";
     $welcomeDescription = $welcomeDescription ?? "Hier können Sie alle Aspekte der {$appName} verwalten.";
     
-    // Get nav items from the layout stack
-    $navItems = [];
-    if (View::hasSection('nav-items')) {
+    // Use provided nav items or get from layout stack
+    if (empty($navItems) && View::hasSection('nav-items')) {
         $navItems = json_decode(View::yieldContent('nav-items'), true) ?? [];
     }
     
