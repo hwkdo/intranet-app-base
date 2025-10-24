@@ -2,7 +2,8 @@
     'appIdentifier' => '',
     'heading' => '',
     'subheading' => '',
-    'navItems' => []
+    'navItems' => [],
+    'wrapInCard' => true
 ])
 
 <div class="w-full">
@@ -32,7 +33,13 @@
         <flux:separator class="md:hidden" />
 
         <div class="flex-1 self-stretch max-md:pt-6">
-            {{ $slot }}
+            @if($wrapInCard)
+                <flux:card>
+                    {{ $slot }}
+                </flux:card>
+            @else
+                {{ $slot }}
+            @endif
         </div>
     </div>
 </div>
