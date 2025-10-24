@@ -9,17 +9,13 @@
     <div class="mr-10 w-full pb-4 md:w-[220px]">
         <flux:navlist>
             @foreach($navItems as $navItem)
-                <flux:navlist.item 
-                    :href="$navItem['href']" 
-                    wire:navigate
-                    @if(isset($navItem['permission']))
-                        @can($navItem['permission'])
-                    @endif
-                >
-                    {{ $navItem['label'] }}
-                </flux:navlist.item>
-                @if(isset($navItem['permission']))
-                    @endcan
+                @if(!isset($navItem['permission']) || auth()->user()->can($navItem['permission']))
+                    <flux:navlist.item 
+                        :href="$navItem['href']" 
+                        wire:navigate
+                    >
+                        {{ $navItem['label'] }}
+                    </flux:navlist.item>
                 @endif
             @endforeach
         </flux:navlist>
