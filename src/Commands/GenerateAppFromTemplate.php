@@ -112,6 +112,11 @@ class GenerateAppFromTemplate extends Command
             $newPath = str_replace($search, $replace, $newPath);
         }
 
+        // Remove .stub extension from migration files
+        if (str_ends_with($newPath, '.php.stub')) {
+            $newPath = str_replace('.php.stub', '.php', $newPath);
+        }
+
         return $newPath;
     }
 
