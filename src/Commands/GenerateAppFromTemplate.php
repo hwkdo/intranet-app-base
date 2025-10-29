@@ -102,8 +102,7 @@ class GenerateAppFromTemplate extends Command
     {
         $transformations = [
             'intranet-app-template' => "intranet-app-{$identifier}",
-            'IntranetAppTemplate' => Str::studly("IntranetApp{$identifier}"),
-            'IntranetAppTemplate' => Str::studly("IntranetApp{$identifier}"),
+            'IntranetAppTemplate' => "IntranetApp" . Str::studly($identifier),
             'template' => $identifier,
             'Template' => Str::studly($identifier),
         ];
@@ -121,11 +120,7 @@ class GenerateAppFromTemplate extends Command
         $transformations = [
             // Namespace transformations
             'Hwkdo\\IntranetAppTemplate\\' => "Hwkdo\\IntranetApp" . Str::studly($identifier) . "\\",
-            'IntranetAppTemplate' => Str::studly("IntranetApp{$identifier}"),
-            
-            // Class name transformations
-            'IntranetAppTemplate' => Str::studly("IntranetApp{$identifier}"),
-            'IntranetAppTemplate' => Str::studly("IntranetApp{$identifier}"),
+            'IntranetAppTemplate' => "IntranetApp" . Str::studly($identifier),
             
             // Route transformations
             'apps.template.' => "apps.{$identifier}.",

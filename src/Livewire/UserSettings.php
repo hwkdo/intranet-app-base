@@ -35,7 +35,7 @@ class UserSettings extends Component
     public function save(): void
     {
         $user = Auth::user();
-        $user->settings = $user->settings->updateApp($this->appIdentifier, $this->userSettings);
+        $user->settings->app->updateApp($this->appIdentifier, $this->userSettings);
         $user->save();
 
         Flux::toast(
