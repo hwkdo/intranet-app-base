@@ -4,6 +4,7 @@ namespace Hwkdo\IntranetAppBase\Commands;
 
 use App\Data\UserAppSettings;
 use App\Models\User;
+use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Hwkdo\IntranetAppBase\Interfaces\IntranetAppInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -18,11 +19,11 @@ class SyncAppSettings extends Command
     {
         $this->info('Starting Intranet App Settings Synchronization...');
         
-        $packages = $this->getIntranetAppPackages();
+        $packages = IntranetAppBase::getIntranetAppPackages();
         $updatedApps = [];
         
         foreach ($packages as $packageName => $packageData) {
-            $appClass = $this->getAppClass($packageName, $packageData);
+            $appClass = IntranetAppBase::getAppClass($packageName, $packageData);
             
             if (!$appClass || !class_exists($appClass)) {
                 continue;
@@ -181,30 +182,4 @@ class SyncAppSettings extends Command
         return null;
     }
     
-    private function getIntranetAppPackages(): array
-    {
-        $packagesFile = base_path('bootstrap/cache/packages.php');
-        
-        if (!file_exists($packagesFile)) {
-            return [];
-        }
-        
-        $packages = require $packagesFile;
-        
-        return array_filter($packages, function ($key) {
-            return str_starts_with($key, 'hwkdo/intranet-app-') &&
-                   !str_starts_with($key, 'hwkdo/intranet-app-base');
-        }, ARRAY_FILTER_USE_KEY);
-    }
-    
-    private function getAppClass(string $packageName, array $packageData): ?string
-    {
-        // Convert package name to class name
-        // e.g., "hwkdo/intranet-app-hwro" -> "Hwkdo\IntranetAppHwro\IntranetAppHwro"
-        $parts = explode('/', $packageName);
-        $vendor = ucfirst($parts[0]);
-        $packagePart = str_replace('-', '', ucwords($parts[1], '-'));
-        
-        return "$vendor\\$packagePart\\$packagePart";
-    }
 }

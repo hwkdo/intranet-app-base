@@ -23,7 +23,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             ->hasViews()
             ->hasMigrations()
                 ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncAppSettings::class)
-                ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class);
+                ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class)
+                ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncIntranetAppPermissions::class);
     }
 
     public function bootingPackage()
