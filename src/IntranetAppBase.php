@@ -107,7 +107,8 @@ class IntranetAppBase {
                 continue;
             }
 
-            $identifier = str($packageName)->afterLast('-')->value;
+            #$identifier = str($packageName)->afterLast('-')->value;
+            $identifier = str($packageName)->after('intranet-app-')->value;
             $configKey = "intranet-app-{$identifier}";
             $appConfig = config($configKey);
 
