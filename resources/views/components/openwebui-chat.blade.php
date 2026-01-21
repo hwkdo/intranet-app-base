@@ -8,8 +8,9 @@
 ])
 
 @php
-    // Generate unique container ID if not provided
-    $containerId = $containerId ?? 'owui-chat-container-' . uniqid();
+    // Use fixed container ID by default for Dark Mode CSS compatibility
+    // Only use unique ID if explicitly provided via containerId prop
+    $containerId = $containerId ?? 'owui-chat-container';
     
     // Validate required props
     $hasRequiredProps = !empty($apiKey) && !empty($model) && !empty($endpoint);
