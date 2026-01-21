@@ -1,0 +1,153 @@
+/* Dark Mode Styles für OpenWebUI Widget */
+/* Diese Styles überschreiben die Standard-Widget-Styles für Dark Mode */
+
+/* Haupt-Container */
+.dark #owui-chat-container .wrapper.svelte-1665k1s {
+    background: rgb(39 39 42) !important; /* zinc-800 */
+    color: rgb(244 244 245) !important; /* zinc-100 */
+    box-shadow: 0 0 0 1px rgba(63, 63, 70, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Header */
+.dark #owui-chat-container .header.svelte-1665k1s {
+    background: rgb(39 39 42) !important; /* zinc-800 */
+    border-bottom-color: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+.dark #owui-chat-container .header-title.svelte-1665k1s {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Messages Container */
+.dark #owui-chat-container .messages.svelte-1665k1s {
+    background: rgb(39 39 42) !important; /* zinc-800 */
+}
+
+/* Scrollbar Dark Mode */
+.dark #owui-chat-container .messages.svelte-1665k1s::-webkit-scrollbar-thumb {
+    background: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+.dark #owui-chat-container .messages.svelte-1665k1s::-webkit-scrollbar-thumb:hover {
+    background: rgb(82 82 91) !important; /* zinc-600 */
+}
+
+/* Message Wrapper */
+.dark #owui-chat-container .message-wrapper.user.svelte-1665k1s {
+    background: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+.dark #owui-chat-container .message-wrapper.assistant.svelte-1665k1s {
+    background: rgb(39 39 42) !important; /* zinc-800 */
+}
+
+/* Message Text */
+.dark #owui-chat-container .message.svelte-1665k1s {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Input Container */
+.dark #owui-chat-container .input-container.svelte-1665k1s {
+    background: rgb(39 39 42) !important; /* zinc-800 */
+    border-top-color: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+/* Input Wrapper */
+.dark #owui-chat-container .input-wrapper.svelte-1665k1s {
+    background: rgb(24 24 27) !important; /* zinc-900 */
+    border-color: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+.dark #owui-chat-container .input-wrapper.svelte-1665k1s:focus-within {
+    border-color: rgb(59 130 246) !important; /* blue-500 */
+}
+
+/* Textarea */
+.dark #owui-chat-container textarea.svelte-1665k1s {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+    background: transparent !important;
+}
+
+.dark #owui-chat-container textarea.svelte-1665k1s::placeholder {
+    color: rgb(161 161 170) !important; /* zinc-400 */
+}
+
+/* Button */
+.dark #owui-chat-container button.svelte-1665k1s {
+    background: rgb(24 24 27) !important; /* zinc-900 */
+    color: rgb(161 161 170) !important; /* zinc-400 */
+}
+
+.dark #owui-chat-container button.svelte-1665k1s:hover:not(:disabled) {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Markdown Content - Headings */
+.dark #owui-chat-container .markdown-content h1,
+.dark #owui-chat-container .markdown-content h2,
+.dark #owui-chat-container .markdown-content h3,
+.dark #owui-chat-container .markdown-content h4,
+.dark #owui-chat-container .markdown-content h5,
+.dark #owui-chat-container .markdown-content h6 {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Markdown Content - Paragraph */
+.dark #owui-chat-container .markdown-content p {
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Markdown Content - Code */
+.dark #owui-chat-container .markdown-content code {
+    background: rgb(24 24 27) !important; /* zinc-900 */
+    border-color: rgb(63 63 70) !important; /* zinc-700 */
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Markdown Content - Pre */
+.dark #owui-chat-container .markdown-content pre {
+    background: rgb(24 24 27) !important; /* zinc-900 */
+    border-color: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+.dark #owui-chat-container .markdown-content pre code {
+    background: none !important;
+    border: none !important;
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+/* Markdown Content - Blockquote */
+.dark #owui-chat-container .markdown-content blockquote {
+    border-left-color: rgb(63 63 70) !important; /* zinc-700 */
+    color: rgb(161 161 170) !important; /* zinc-400 */
+}
+
+/* Markdown Content - Links */
+.dark #owui-chat-container .markdown-content a {
+    color: rgb(59 130 246) !important; /* blue-500 */
+}
+
+.dark #owui-chat-container .markdown-content a:hover {
+    color: rgb(96 165 250) !important; /* blue-400 */
+}
+
+/* Markdown Content - Horizontal Rule */
+.dark #owui-chat-container .markdown-content hr {
+    border-top-color: rgb(63 63 70) !important; /* zinc-700 */
+}
+
+/* Markdown Content - Table */
+.dark #owui-chat-container .markdown-content table th,
+.dark #owui-chat-container .markdown-content table td {
+    border-color: rgb(63 63 70) !important; /* zinc-700 */
+    color: rgb(244 244 245) !important; /* zinc-100 */
+}
+
+.dark #owui-chat-container .markdown-content table th {
+    background: rgb(24 24 27) !important; /* zinc-900 */
+}
+
+/* Loading Dots */
+.dark #owui-chat-container .loading-dot.svelte-1665k1s {
+    background: rgb(161 161 170) !important; /* zinc-400 */
+}
