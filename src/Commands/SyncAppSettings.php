@@ -119,11 +119,8 @@ class SyncAppSettings extends Command
         $updatedUsers = 0;
         
         foreach ($users as $user) {
-            $userAppSettings = $user->settings;
-            
-            if (!$userAppSettings instanceof UserAppSettings) {
-                $userAppSettings = new UserAppSettings();
-            }
+            $userSettings = $user->settings;
+            $userAppSettings = $userSettings->app;
             
             // Get current app settings for this user
             $currentAppSettings = $userAppSettings->__get($identifier);
@@ -149,8 +146,9 @@ class SyncAppSettings extends Command
                 }
             }
             
-            // Save updated settings
-            $user->settings = $userAppSettings;
+            // Save updated settings - WICHTIG: Speichere das komplette UserSettings Objekt
+            $userSettings->app = $userAppSettings;
+            $user->settings = $userSettings;
             $user->save();
         }
         
