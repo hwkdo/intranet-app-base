@@ -4,7 +4,6 @@ namespace Hwkdo\IntranetAppBase;
 
 use Hwkdo\IntranetAppBase\Livewire\AdminSettings;
 use Hwkdo\IntranetAppBase\Livewire\UserSettings;
-use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
 use Spatie\LaravelPackageTools\Package;
@@ -66,13 +65,6 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         // Register Volt components as Livewire components so they can be found
         if ($mountedPath) {
             Livewire::component('open-web-ui-chat', 'intranet-app-base::livewire.open-web-ui-chat');
-            Livewire::component('openwebui-demo', 'intranet-app-base::livewire.openwebui-demo');
         }
-
-        Route::middleware(['web', 'auth'])->group(function () {
-            // OpenWebUI Chat Demo Route - use simple filename since Volt searches mounted paths
-            Volt::route('openwebui-demo', 'openwebui-demo')
-                ->name('intranet-app-base.openwebui-demo');
-        });
     }
 }
