@@ -23,4 +23,16 @@ interface IntranetAppInterface
      * Returns null if the app does not have app-wide settings.
      */
     public static function appSettingsClass(): ?string;
+    
+    /**
+     * Get the MCP servers configuration for this app.
+     * Returns an array of MCP server configurations.
+     * Each configuration should include:
+     * - 'name': Unique identifier for the server (used as array key)
+     * - 'class': Server class (optional, for route registration)
+     * - 'url': Server URL (optional, if different from default pattern)
+     * 
+     * @return array<string, array{class?: string, url?: string, middleware?: array}>
+     */
+    public static function mcpServers(): array;
 }
