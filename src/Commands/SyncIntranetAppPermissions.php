@@ -72,6 +72,7 @@ class SyncIntranetAppPermissions extends Command
 
         $this->syncPermissions($identifier, $permissions);
         $this->syncRoles($identifier, $roles);
+        $this->syncAllUsersRoles($roles);
     }
 
     private function syncPermissions(string $identifier, array $requiredPermissions): void
@@ -131,6 +132,42 @@ class SyncIntranetAppPermissions extends Command
             if ($role) {
                 $role->delete();
                 $this->line("    ✗ Rolle entfernt: {$roleName}");
+            }
+        }
+    }
+
+    private function syncAllUsersRoles(array $roles): void
+    {
+        $allUsersRoles = collect($roles)->filter(function ($role) {
+            return isset($role['all_users']) && $role['all_users'] === true;
+        });
+
+        if ($allUsersRoles->isEmpty()) {
+            return;
+        }
+
+        $this->line('  → Synchronisiere "all_users" Rollen...');
+
+        // Hole alle aktiven User
+        $users = \App\Models\User::aktiv()->get();
+
+        foreach ($allUsersRoles as $roleData) {
+            $role = Role::findByName($roleData['name'], 'web');
+            
+            if (! $role) {
+                continue;
+            }
+
+            $usersWithoutRole = $users->filter(function ($user) use ($role) {
+                return ! $user->hasRole($role);
+            });
+
+            foreach ($usersWithoutRole as $user) {
+                $user->assignRole($role);
+            }
+
+            if ($usersWithoutRole->count() > 0) {
+                $this->line("    ✓ Rolle '{$roleData['name']}' zu {$usersWithoutRole->count()} User(n) hinzugefügt");
             }
         }
     }

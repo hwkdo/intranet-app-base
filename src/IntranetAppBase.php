@@ -37,7 +37,8 @@ class IntranetAppBase {
                 if (isset($role['name']) && isset($role['permissions'])) {
                     $roles[$roleKey] = [
                         'name' => $role['name'],
-                        'permissions' => $role['permissions']
+                        'permissions' => $role['permissions'],
+                        'all_users' => $role['all_users'] ?? false
                     ];
                 }
                 
@@ -47,7 +48,8 @@ class IntranetAppBase {
                         if (isset($subRole['name']) && isset($subRole['permissions'])) {
                             $roles[$roleKey . '.' . $subRoleKey] = [
                                 'name' => $subRole['name'],
-                                'permissions' => $subRole['permissions']
+                                'permissions' => $subRole['permissions'],
+                                'all_users' => $subRole['all_users'] ?? false
                             ];
                         }
                     });
