@@ -31,9 +31,6 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     public function bootingPackage()
     {
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
-
-        Livewire::component('intranet-app-base::user-settings', UserSettings::class);
-        Livewire::component('intranet-app-base::admin-settings', AdminSettings::class);
     }
 
     public function bootPackage()
@@ -45,26 +42,33 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     public function boot()
     {
         parent::boot();
-
+        Volt::mount(__DIR__.'/../resources/views/livewire');
+        Livewire::addNamespace(
+            namespace: 'intranet-app-base',
+            classNamespace: 'Hwkdo\\IntranetAppBase\\Livewire',
+            classPath: __DIR__ . '/Livewire',
+            classViewPath: __DIR__ . '/../resources/views/livewire',
+        );
+        #
         // Mount Volt views from package - try multiple paths
-        $possiblePaths = [
-            realpath(dirname(__DIR__, 2).'/resources/views/livewire'),
-            base_path('packages/intranet-app-base/resources/views/livewire'),
-            base_path('vendor/hwkdo/intranet-app-base/resources/views/livewire'),
-        ];
+        // $possiblePaths = [
+        //     realpath(dirname(__DIR__, 2).'/resources/views/livewire'),
+        //     base_path('packages/intranet-app-base/resources/views/livewire'),
+        //     base_path('vendor/hwkdo/intranet-app-base/resources/views/livewire'),
+        // ];
 
-        $mountedPath = null;
-        foreach ($possiblePaths as $path) {
-            if ($path && file_exists($path)) {
-                Volt::mount([$path]);
-                $mountedPath = $path;
-                break;
-            }
-        }
+        // $mountedPath = null;
+        // foreach ($possiblePaths as $path) {
+        //     if ($path && file_exists($path)) {
+        //         Volt::mount([$path]);
+        //         $mountedPath = $path;
+        //         break;
+        //     }
+        // }
 
-        // Register Volt components as Livewire components so they can be found
-        if ($mountedPath) {
-            Livewire::component('open-web-ui-chat', 'intranet-app-base::livewire.open-web-ui-chat');
-        }
+        // // Register Volt components as Livewire components so they can be found
+        // if ($mountedPath) {
+        //     Livewire::component('open-web-ui-chat', 'intranet-app-base::livewire.open-web-ui-chat');
+        // }
     }
 }
