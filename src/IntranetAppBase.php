@@ -38,10 +38,11 @@ class IntranetAppBase {
                     $roles[$roleKey] = [
                         'name' => $role['name'],
                         'permissions' => $role['permissions'],
-                        'all_users' => $role['all_users'] ?? false
+                        'all_users' => $role['all_users'] ?? false,
+                        'add_to_existing' => $role['add_to_existing'] ?? false,
                     ];
                 }
-                
+
                 // Unterrollen durchgehen (wie "others")
                 if (is_array($role)) {
                     collect($role)->each(function ($subRole, $subRoleKey) use (&$roles, $roleKey) {
@@ -49,7 +50,8 @@ class IntranetAppBase {
                             $roles[$roleKey . '.' . $subRoleKey] = [
                                 'name' => $subRole['name'],
                                 'permissions' => $subRole['permissions'],
-                                'all_users' => $subRole['all_users'] ?? false
+                                'all_users' => $subRole['all_users'] ?? false,
+                                'add_to_existing' => $subRole['add_to_existing'] ?? false,
                             ];
                         }
                     });

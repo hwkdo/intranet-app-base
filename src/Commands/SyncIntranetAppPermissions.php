@@ -2,6 +2,7 @@
 
 namespace Hwkdo\IntranetAppBase\Commands;
 
+use Hwkdo\IntranetAppBase\Events\ExternalAppConfigSynced;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
@@ -41,6 +42,11 @@ class SyncIntranetAppPermissions extends Command
         foreach ($apps as $identifier => $appConfig) {
             $this->info("Synchronisiere App: {$identifier}");
             $this->syncAppPermissions($identifier, $appConfig);
+
+            if (str_starts_with($identifier, 'external-')) {
+                $configKey = substr($identifier, 9);
+                ExternalAppConfigSynced::dispatch($configKey, $appConfig);
+            }
         }
 
         $this->info('✅ Synchronisierung abgeschlossen!');
@@ -51,6 +57,11 @@ class SyncIntranetAppPermissions extends Command
     private function getAppsToSync(?string $appIdentifier): array
     {
         if ($appIdentifier) {
+            $externalApps = config('external_apps.apps', []);
+            if (isset($externalApps[$appIdentifier])) {
+                return [$appIdentifier => $externalApps[$appIdentifier]];
+            }
+
             $appConfig = IntranetAppBase::getAppConfig($appIdentifier);
 
             if (! $appConfig) {
@@ -62,7 +73,16 @@ class SyncIntranetAppPermissions extends Command
             return [$appIdentifier => $appConfig];
         }
 
-        return IntranetAppBase::getAppsWithConfigs();
+        $intranetApps = IntranetAppBase::getAppsWithConfigs();
+        $externalApps = config('external_apps.apps', []);
+        $externalWithPrefix = [];
+        foreach ($externalApps as $key => $config) {
+            if (isset($config['roles'])) {
+                $externalWithPrefix['external-'.$key] = $config;
+            }
+        }
+
+        return array_merge($intranetApps, $externalWithPrefix);
     }
 
     private function syncAppPermissions(string $identifier, array $appConfig): void
@@ -91,10 +111,17 @@ class SyncIntranetAppPermissions extends Command
         }
 
         // Entferne Permissions die nicht mehr benötigt werden
-        $appPermissions = Permission::where('name', 'like', "%-app-{$identifier}%")
-            ->orWhere('name', 'like', "app-{$identifier}%")
-            ->pluck('name')
-            ->toArray();
+        if (str_starts_with($identifier, 'external-')) {
+            $shortId = substr($identifier, 9);
+            $appPermissions = Permission::where('name', 'like', 'see-external-app-'.$shortId.'%')
+                ->pluck('name')
+                ->toArray();
+        } else {
+            $appPermissions = Permission::where('name', 'like', "%-app-{$identifier}%")
+                ->orWhere('name', 'like', "app-{$identifier}%")
+                ->pluck('name')
+                ->toArray();
+        }
 
         $permissionsToRemove = array_diff($appPermissions, $requiredPermissions);
 
@@ -115,15 +142,33 @@ class SyncIntranetAppPermissions extends Command
 
         foreach ($roles as $role) {
             $roleModel = Role::findOrCreate($role['name'], 'web');
-            $roleModel->syncPermissions($role['permissions']);
-            $this->line("    ✓ Rolle synchronisiert: {$role['name']}");
+
+            if (! empty($role['add_to_existing'])) {
+                foreach ($role['permissions'] as $permissionName) {
+                    if (! $roleModel->hasPermissionTo($permissionName)) {
+                        $roleModel->givePermissionTo($permissionName);
+                        $this->line("    ✓ Permission '{$permissionName}' zu Rolle '{$role['name']}' hinzugefügt");
+                    }
+                }
+            } else {
+                $roleModel->syncPermissions($role['permissions']);
+                $this->line("    ✓ Rolle synchronisiert: {$role['name']}");
+            }
         }
 
         // Entferne Rollen die nicht mehr benötigt werden
-        $appRoles = Role::where('name', 'like', "%{$identifier}%")
-            ->orWhere('name', 'like', "App-{$identifier}%")
-            ->pluck('name')
-            ->toArray();
+        if (str_starts_with($identifier, 'external-')) {
+            $shortId = substr($identifier, 9);
+            $appRoles = Role::where('name', 'like', '%External-'.ucfirst(str_replace('-', '', $shortId)).'%')
+                ->orWhere('name', 'like', '%external-'.$shortId.'%')
+                ->pluck('name')
+                ->toArray();
+        } else {
+            $appRoles = Role::where('name', 'like', "%{$identifier}%")
+                ->orWhere('name', 'like', "App-{$identifier}%")
+                ->pluck('name')
+                ->toArray();
+        }
 
         $rolesToRemove = array_diff($appRoles, $requiredRoleNames);
 

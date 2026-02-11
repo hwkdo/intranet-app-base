@@ -1,44 +1,49 @@
 <?php
 
 use Flux\Flux;
-use function Livewire\Volt\{computed, mount, state};
+use Livewire\Attributes\Computed;
+use Livewire\Component;
 
-state([
-    'appSettings' => [],
-    'settingsId' => null,
-]);
+new class extends Component
+{
+    public $appSettings = [];
 
-mount(function () {
-    $settingsModelClass = $this->settingsModelClass;
-    $appSettingsClass = $this->appSettingsClass;
-    
-    if (!$settingsModelClass || !$appSettingsClass) {
-        return;
-    }
-    
-    $settings = $settingsModelClass::current();
-    
-    if ($settings && $settings->settings) {
-        $this->settingsId = $settings->id;
-        $reflection = new \ReflectionClass($settings->settings);
-        $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
-        
-        foreach ($properties as $property) {
-            $key = $property->getName();
-            $value = $property->getValue($settings->settings);
-            
-            if ($value instanceof \UnitEnum) {
-                $this->appSettings[$key] = $value instanceof \BackedEnum ? $value->value : $value->name;
-            } elseif (is_array($value)) {
-                $this->appSettings[$key] = $value;
-            } else {
-                $this->appSettings[$key] = $value;
+    public $settingsId;
+
+    public function mount(): void
+    {
+        $settingsModelClass = $this->settingsModelClass;
+        $appSettingsClass = $this->appSettingsClass;
+
+        if (! $settingsModelClass || ! $appSettingsClass) {
+            return;
+        }
+
+        $settings = $settingsModelClass::current();
+
+        if ($settings && $settings->settings) {
+            $this->settingsId = $settings->id;
+            $reflection = new \ReflectionClass($settings->settings);
+            $properties = $reflection->getProperties(\ReflectionProperty::IS_PUBLIC);
+
+            foreach ($properties as $property) {
+                $key = $property->getName();
+                $value = $property->getValue($settings->settings);
+
+                if ($value instanceof \UnitEnum) {
+                    $this->appSettings[$key] = $value instanceof \BackedEnum ? $value->value : $value->name;
+                } elseif (is_array($value)) {
+                    $this->appSettings[$key] = $value;
+                } else {
+                    $this->appSettings[$key] = $value;
+                }
             }
         }
     }
-});
 
-$settingsStructure = computed(function () {
+    #[Computed]
+    public function settingsStructure()
+    {
     $settingsModelClass = $this->settingsModelClass;
     $appSettingsClass = $this->appSettingsClass;
     
@@ -123,10 +128,11 @@ $settingsStructure = computed(function () {
         }
     }
     
-    return $structure;
-});
+        return $structure;
+    }
 
-$save = function () {
+    public function save(): void
+    {
     $settingsModelClass = $this->settingsModelClass;
     $appSettingsClass = $this->appSettingsClass;
     
@@ -140,15 +146,14 @@ $save = function () {
         $settings->settings = $appSettingsClass::from($this->appSettings);
         $settings->save();
         
-        Flux::toast(
-            heading: 'Einstellungen gespeichert',
-            text: 'Die Admin-Einstellungen wurden erfolgreich aktualisiert.',
-            variant: 'success'
-        );
+            Flux::toast(
+                heading: 'Einstellungen gespeichert',
+                text: 'Die Admin-Einstellungen wurden erfolgreich aktualisiert.',
+                variant: 'success'
+            );
+        }
     }
-};
-
-?>
+}; ?>
 
 <flux:card>
     <flux:heading size="lg" class="mb-4">Administrator-Einstellungen</flux:heading>
