@@ -197,7 +197,7 @@ $getAppClass = function (string $packageName, array $packageData): ?string {
 
 ?>
 
-<flux:card>
+<flux:card class="glass-card">
     <flux:heading size="lg" class="mb-4">Persönliche Einstellungen</flux:heading>
     <flux:text class="mb-6">
         Passen Sie Ihre persönlichen Einstellungen für diese App an.

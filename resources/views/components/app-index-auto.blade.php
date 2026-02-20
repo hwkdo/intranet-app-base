@@ -31,14 +31,14 @@
     })->values()->toArray();
 @endphp
 
-<flux:card>
+<flux:card class="glass-card">
     <flux:heading size="lg" class="mb-4">{{ $welcomeTitle }}</flux:heading>
     <flux:text class="mb-6">{{ $welcomeDescription }}</flux:text>
     
     @if(count($mainNavItems) > 0)
         <div class="grid gap-4 md:grid-cols-2">
             @foreach($mainNavItems as $item)
-                <flux:card>
+                <flux:card class="glass-card">
                     <div class="flex items-center gap-3">
                         <flux:icon name="{{ $item['icon'] ?? 'document-text' }}" class="size-8 text-zinc-500 dark:text-zinc-400" />
                         <div>
@@ -63,7 +63,7 @@
         <div class="mt-6 grid gap-4 md:grid-cols-2">
             @foreach($settingsItems as $item)
                 @if(!isset($item['permission']) || auth()->user()->can($item['permission']))
-                    <flux:card>
+                    <flux:card class="glass-card">
                         <div class="flex items-center gap-3">
                             <flux:icon name="{{ $item['icon'] ?? 'cog-6-tooth' }}" class="size-8 text-zinc-500 dark:text-zinc-400" />
                             <div>
