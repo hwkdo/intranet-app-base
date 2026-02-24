@@ -10,8 +10,8 @@
             @foreach ($this->groupedTasks as $appIdentifier => $tasks)
                 <div class="rounded-lg border border-zinc-200 dark:border-white/10 overflow-hidden">
                     <div class="flex items-center gap-2 px-4 py-2.5 bg-zinc-50/80 dark:bg-white/5 border-b border-zinc-200 dark:border-white/10">
-                        <flux:icon :name="$tasks->first()->appIcon" class="size-4 text-zinc-500 dark:text-zinc-400" />
-                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ $tasks->first()->appName }}</span>
+                        <flux:icon :name="$tasks->first()->appIcon" class="size-4 text-zinc-500 dark:text-zinc-300" />
+                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-100">{{ $tasks->first()->appName }}</span>
                         <flux:badge size="sm" variant="solid" color="red" class="ml-auto">
                             {{ $tasks->count() }}
                         </flux:badge>
@@ -29,7 +29,7 @@
                                             {{ $task->title }}
                                         </p>
                                         @if ($task->description)
-                                            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                                            <p class="text-xs text-zinc-500 dark:text-zinc-100 mt-0.5 truncate">
                                                 {{ $task->description }}
                                             </p>
                                         @endif
