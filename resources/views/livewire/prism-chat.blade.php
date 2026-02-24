@@ -1,274 +1,352 @@
 <?php
 
 use Hwkdo\IntranetAppBase\Services\McpServerService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Component;
+use Prism\Prism\Enums\Provider;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Facades\Tool;
-use Prism\Prism\Streaming\Events\StreamEvent;
 use Prism\Prism\Streaming\Events\TextDeltaEvent;
 use Prism\Prism\Streaming\Events\ThinkingEvent;
 use Prism\Prism\Streaming\Events\ToolCallEvent;
 use Prism\Prism\Streaming\Events\ToolResultEvent;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
-use Prism\Prism\ValueObjects\Messages\ToolResultMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 use Prism\Relay\Facades\Relay;
-use Prism\Prism\Enums\Provider;
-use function Livewire\Volt\{mount, state, computed};
 
-state([
-    'messages' => [],
-    'prompt' => '',
-    'streamingData' => '',
-    'isStreaming' => false,
-    'model' => null,
-    'apiKey' => null,
-    'baseUrl' => null,
-    'useMcpTools' => true,
-    'appIdentifier' => null,
-    'provider' => null,
-]);
+new class extends Component
+{
+    public array $messages = [];
+    public string $prompt = '';
+    public string $streamingData = '';
+    public bool $isStreaming = false;
+    public ?string $model = null;
+    public ?string $apiKey = null;
+    public ?string $baseUrl = null;
+    public bool $useMcpTools = true;
+    public ?string $appIdentifier = null;
 
-mount(function ($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null) {
-    $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
-    $this->apiKey = $apiKey;
-    $this->baseUrl = $baseUrl ?? config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api');
-    $this->useMcpTools = $useMcpTools;
-    $this->appIdentifier = $appIdentifier;
-    $this->provider = $provider ?? Provider::from('ollama');
-});
+    /** @var string|Provider|null Von Livewire gesetzt (z. B. 'openwebui-completions'), wird bei Nutzung normalisiert. */
+    public string|Provider|null $provider = null;
 
-$sendMessage = function () {
-    if (empty(trim($this->prompt))) {
-        return;
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null): void
+    {
+        $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
+        $this->apiKey = $apiKey;
+        $this->baseUrl = $baseUrl ?? config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api');
+        $this->useMcpTools = $useMcpTools;
+        $this->appIdentifier = $appIdentifier;
+        $this->provider = $this->normalizeProvider($this->provider ?? $provider);
     }
 
-    $userMessage = trim($this->prompt);
-    $this->prompt = '';
-
-    // Add user message to history
-    $this->messages[] = [
-        'role' => 'user',
-        'content' => $userMessage,
-    ];
-
-    // Reset streaming data
-    $this->streamingData = '';
-    $this->isStreaming = true;
-
-    // Trigger streaming
-    $this->js('$wire.streamResponse()');
-};
-
-$streamResponse = function () {
-    // Initialize stream data structure early to ensure valid JSON
-    $streamData = [
-        'text' => '',
-        'thinking' => '',
-        'toolCalls' => [],
-        'toolResults' => [],
-    ];
-
-    if (empty($this->apiKey) || empty($this->model) || empty($this->baseUrl)) {
-        $this->isStreaming = false;
-        $this->streamingData = json_encode($streamData);
-        return;
+    private function resolveProvider(): Provider
+    {
+        return $this->provider instanceof Provider
+            ? $this->provider
+            : $this->normalizeProvider($this->provider);
     }
 
-    // Build messages array for Prism
-    // WICHTIG: Wir übergeben nur den Text-Content, KEINE Tool-Calls aus der History
-    // da diese als Arrays gespeichert sind und Prism ToolCall-Objekte erwartet
-    $prismMessages = [];
-    foreach ($this->messages as $msg) {
-        if ($msg['role'] === 'user') {
-            $prismMessages[] = new UserMessage($msg['content']);
-        } elseif ($msg['role'] === 'assistant') {
-            // Übergebe nur den Content ohne Tool-Calls, da Tool-Calls
-            // nicht korrekt serialisiert/deserialisiert werden können
-            $prismMessages[] = new AssistantMessage($msg['content']);
+    private function normalizeProvider(mixed $provider): Provider
+    {
+        if ($provider instanceof Provider) {
+            return $provider;
         }
+        if ($provider === 'openwebui-completions') {
+            return Provider::Ollama;
+        }
+        if (is_string($provider)) {
+            return Provider::tryFrom($provider) ?? Provider::Ollama;
+        }
+
+        return Provider::Ollama;
     }
 
-    try {
-
-        // Configure Prism with OpenWebUI Completions provider
-        $baseUrl = rtrim($this->baseUrl, '/');
-        
-        $prismRequest = Prism::text()
-            ->using($this->provider, $this->model, [
-                'url' => $baseUrl,
-                'base_url' => $baseUrl,
-                'api_key' => $this->apiKey,
-            ])
-            ->withMessages($prismMessages);
-
-        // Füge MCP-Tools hinzu wenn aktiviert
-        if ($this->useMcpTools && !empty($this->appIdentifier)) {
-            try {
-                /** @var \App\Models\User $user */
-                $user = Auth::user();
-                if ($user) {
-                    // Hole oder erstelle den API Token für MCP-Zugriff
-                    $accessToken = $user->settings->ai->intranetV3ApiToken;
-                    
-                    // Wenn kein Token gespeichert ist, erstelle einen neuen
-                    if (empty($accessToken)) {
-                        $tokenResult = $user->createToken('intranet-v3-mcp-access', ['mcp:use']);
-                        $accessToken = $tokenResult->accessToken;
-                        
-                        // Speichere den Token in den User Settings
-                        $settings = $user->settings;
-                        $aiSettings = new \App\Data\UserAiSettings(
-                            openWebUiApiToken: $settings->ai->openWebUiApiToken,
-                            intranetV3ApiToken: $accessToken,
-                        );
-                        $settings->ai = $aiSettings;
-                        $user->settings = $settings;
-                        $user->save();
-                    }
-                    
-                    // Konfiguriere MCP-Server für die App
-                    if (!empty($accessToken)) {
-                        $mcpService = new McpServerService();
-                        $mcpService->configureMcpServersForApp($this->appIdentifier, $accessToken);
-                        
-                        // Lade Server-Namen für die App
-                        $serverNames = $mcpService->getMcpServerNamesForApp($this->appIdentifier);
-                        
-                        if (!empty($serverNames)) {
-                            // Sammle Tools von allen Servern
-                            $allTools = collect();
-                            
-                            foreach ($serverNames as $serverName) {
-                                try {
-                                    $serverTools = Relay::tools($serverName);
-                                    $allTools = $allTools->merge($serverTools);
-                                } catch (\Throwable $e) {
-                                    Log::error('Failed to load MCP tools from server', [
-                                        'server' => $serverName,
-                                        'error' => $e->getMessage(),
-                                    ]);
-                                    // Fahre mit anderen Servern fort
-                                }
-                            }
-                            
-                            if ($allTools->isNotEmpty()) {
-                                $prismRequest = $prismRequest
-                                    ->withTools($allTools->toArray())
-                                    ->withMaxSteps(5);
-                            }
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::error('Failed to load MCP tools', ['error' => $e->getMessage()]);
-                // Fahre ohne MCP-Tools fort
-            }
+    public function sendMessage(): void
+    {
+        if (empty(trim($this->prompt))) {
+            return;
         }
 
-        // Send initial empty stream data to ensure valid JSON
-        $this->stream(
-            'streamingData',
-            json_encode($streamData),
-            true
-        );
+        $userMessage = trim($this->prompt);
+        $this->prompt = '';
 
-        $generator = $prismRequest->asStream();
-        
-        $eventCount = 0;
-        foreach ($generator as $event) {
-            $eventCount++;
-            // Process different event types
-            if ($event instanceof TextDeltaEvent) {
-                $streamData['text'] .= $event->delta;
-            } elseif ($event instanceof ThinkingEvent) {
-                $streamData['thinking'] .= $event->delta;
-            } elseif ($event instanceof ToolCallEvent) {
-                $streamData['toolCalls'][] = [
-                    'name' => $event->toolCall->name ?? 'unknown',
-                    'id' => $event->toolCall->id ?? null,
-                    'arguments' => $event->toolCall->arguments() ?? [],
-                ];
-            } elseif ($event instanceof ToolResultEvent) {
-                $streamData['toolResults'][] = [
-                    'result' => $event->toolResult->result ?? '',
-                    'toolName' => $event->toolResult->toolName ?? 'unknown',
-                    'toolCallId' => $event->toolResult->toolCallId ?? null,
-                    'args' => $event->toolResult->args ?? [],
-                ];
-            }
+        // Add user message to history
+        $this->messages[] = [
+            'role' => 'user',
+            'content' => $userMessage,
+        ];
 
-            // Stream update to frontend
-            $this->stream(
-                'streamingData',
-                json_encode($streamData),
-                true
-            );
-        }
-        
-        // Log if no events were received
-        if ($eventCount === 0) {
-            Log::warning('Prism chat stream returned no events', [
-                'model' => $this->model,
-                'baseUrl' => $baseUrl,
-                'messageCount' => count($prismMessages),
-            ]);
-        }
-        
-        // Add complete answer to messages
-        if (!empty($streamData['text']) || !empty($streamData['toolCalls'])) {
-            $this->messages[] = [
-                'role' => 'assistant',
-                'content' => $streamData['text'],
-                'toolCalls' => $streamData['toolCalls'],
-                'toolResults' => $streamData['toolResults'],
-                'thinking' => $streamData['thinking'],
-            ];
-        }
+        // Reset streaming data
+        $this->streamingData = '';
+        $this->isStreaming = true;
 
-        // Ensure streamingData is always set to valid JSON
-        $this->streamingData = json_encode($streamData);
-        $this->isStreaming = false;
-    } catch (\Throwable $e) {
-        $this->isStreaming = false;
-        
-        // Log error for debugging
-        Log::error('Prism chat streaming error', [
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        
-        // Ensure valid JSON is always sent
-        $errorData = [
-            'text' => 'Fehler: '.$e->getMessage(),
+        // Trigger streaming
+        $this->js('$wire.streamResponse()');
+    }
+
+    public function streamResponse(): void
+    {
+        // Initialize stream data structure early to ensure valid JSON
+        $streamData = [
+            'text' => '',
             'thinking' => '',
             'toolCalls' => [],
             'toolResults' => [],
         ];
-        
-        $this->streamingData = json_encode($errorData);
-        
-        // Also send via stream to ensure frontend receives it
-        try {
-            $this->stream(
-                'streamingData',
-                json_encode($errorData),
-                true
-            );
-        } catch (\Throwable $streamError) {
-            // Ignore stream errors if stream is already closed
-            Log::error('Failed to stream error data', [
-                'error' => $streamError->getMessage(),
-            ]);
+
+        if (empty($this->apiKey) || empty($this->model) || empty($this->baseUrl)) {
+            $this->isStreaming = false;
+            $this->streamingData = json_encode($streamData);
+
+            return;
         }
+
+        // Build messages array for Prism
+        // WICHTIG: Wir übergeben nur den Text-Content, KEINE Tool-Calls aus der History
+        // da diese als Arrays gespeichert sind und Prism ToolCall-Objekte erwartet
+        $prismMessages = [];
+        foreach ($this->messages as $msg) {
+            if ($msg['role'] === 'user') {
+                $prismMessages[] = new UserMessage($msg['content']);
+            } elseif ($msg['role'] === 'assistant') {
+                // Übergebe nur den Content ohne Tool-Calls, da Tool-Calls
+                // nicht korrekt serialisiert/deserialisiert werden können
+                $prismMessages[] = new AssistantMessage($msg['content']);
+            }
+        }
+
+        try {
+
+            // Configure Prism with OpenWebUI Completions provider
+            $baseUrl = rtrim($this->baseUrl, '/');
+
+            $prismRequest = Prism::text()
+                ->using($this->resolveProvider(), $this->model, [
+                    'url' => $baseUrl,
+                    'base_url' => $baseUrl,
+                    'api_key' => $this->apiKey,
+                ])
+                ->withMessages($prismMessages);
+
+            // Füge MCP-Tools hinzu wenn aktiviert
+            if ($this->useMcpTools && ! empty($this->appIdentifier)) {
+                try {
+                    /** @var \App\Models\User $user */
+                    $user = Auth::user();
+                    if ($user) {
+                        // Hole oder erstelle den API Token für MCP-Zugriff
+                        $accessToken = $user->settings->ai->intranetV3ApiToken;
+
+                        // Wenn kein Token gespeichert ist, erstelle einen neuen
+                        if (empty($accessToken)) {
+                            $tokenResult = $user->createToken('intranet-v3-mcp-access', ['mcp:use']);
+                            $accessToken = $tokenResult->accessToken;
+
+                            // Speichere den Token in den User Settings
+                            $settings = $user->settings;
+                            $aiSettings = new \App\Data\UserAiSettings(
+                                openWebUiApiToken: $settings->ai->openWebUiApiToken,
+                                intranetV3ApiToken: $accessToken,
+                            );
+                            $settings->ai = $aiSettings;
+                            $user->settings = $settings;
+                            $user->save();
+                        }
+
+                        // Konfiguriere MCP-Server für die App
+                        if (! empty($accessToken)) {
+                            $mcpService = new McpServerService;
+                            $mcpService->configureMcpServersForApp($this->appIdentifier, $accessToken);
+
+                            // Lade Server-Namen für die App
+                            $serverNames = $mcpService->getMcpServerNamesForApp($this->appIdentifier);
+
+                            if (! empty($serverNames)) {
+                                // Sammle Tools von allen Servern
+                                $allTools = collect();
+
+                                foreach ($serverNames as $serverName) {
+                                    try {
+                                        $serverTools = Relay::tools($serverName);
+                                        $allTools = $allTools->merge($serverTools);
+                                    } catch (\Throwable $e) {
+                                        Log::error('Failed to load MCP tools from server', [
+                                            'server' => $serverName,
+                                            'error' => $e->getMessage(),
+                                        ]);
+                                        // Fahre mit anderen Servern fort
+                                    }
+                                }
+
+                                if ($allTools->isNotEmpty()) {
+                                    $prismRequest = $prismRequest
+                                        ->withTools($allTools->toArray())
+                                        ->withMaxSteps(5);
+                                }
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to load MCP tools', ['error' => $e->getMessage()]);
+                    // Fahre ohne MCP-Tools fort
+                }
+            }
+
+            // Send initial empty stream data to ensure valid JSON
+            $this->stream(
+                json_encode($streamData),
+                true,
+                'streamingData'
+            );
+
+            $generator = $prismRequest->asStream();
+
+            $eventCount = 0;
+            foreach ($generator as $event) {
+                $eventCount++;
+                // Process different event types
+                if ($event instanceof TextDeltaEvent) {
+                    $streamData['text'] .= $event->delta;
+                } elseif ($event instanceof ThinkingEvent) {
+                    $streamData['thinking'] .= $event->delta;
+                } elseif ($event instanceof ToolCallEvent) {
+                    $streamData['toolCalls'][] = [
+                        'name' => $event->toolCall->name ?? 'unknown',
+                        'id' => $event->toolCall->id ?? null,
+                        'arguments' => $event->toolCall->arguments() ?? [],
+                    ];
+                } elseif ($event instanceof ToolResultEvent) {
+                    $streamData['toolResults'][] = [
+                        'result' => $event->toolResult->result ?? '',
+                        'toolName' => $event->toolResult->toolName ?? 'unknown',
+                        'toolCallId' => $event->toolResult->toolCallId ?? null,
+                        'args' => $event->toolResult->args ?? [],
+                    ];
+                }
+
+                // Stream update to frontend
+                $this->stream(
+                    json_encode($streamData),
+                    true,
+                    'streamingData'
+                );
+            }
+
+            // Log if no events were received
+            if ($eventCount === 0) {
+                Log::warning('Prism chat stream returned no events', [
+                    'model' => $this->model,
+                    'baseUrl' => $baseUrl,
+                    'messageCount' => count($prismMessages),
+                ]);
+            }
+
+            // Add complete answer to messages
+            if (! empty($streamData['text']) || ! empty($streamData['toolCalls'])) {
+                $this->messages[] = [
+                    'role' => 'assistant',
+                    'content' => $streamData['text'],
+                    'toolCalls' => $streamData['toolCalls'],
+                    'toolResults' => $streamData['toolResults'],
+                    'thinking' => $streamData['thinking'],
+                ];
+            }
+
+            // Ensure streamingData is always set to valid JSON
+            $this->streamingData = json_encode($streamData);
+            $this->isStreaming = false;
+        } catch (\Throwable $e) {
+            $this->isStreaming = false;
+
+            $errorDetail = $this->extractApiErrorDetail($e);
+
+            Log::error('Prism chat streaming error', [
+                'message' => $e->getMessage(),
+                'detail' => $errorDetail,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            $errorText = 'Fehler: '.$e->getMessage().($errorDetail !== '' ? ' — '.$errorDetail : '');
+            $errorData = [
+                'text' => $errorText,
+                'thinking' => '',
+                'toolCalls' => [],
+                'toolResults' => [],
+            ];
+
+            $this->streamingData = json_encode($errorData);
+
+            // In Nachrichten übernehmen, damit die Fehlermeldung sichtbar bleibt
+            $this->messages[] = [
+                'role' => 'assistant',
+                'content' => $errorText,
+                'toolCalls' => [],
+                'toolResults' => [],
+                'thinking' => '',
+            ];
+
+            // Also send via stream to ensure frontend receives it
+            try {
+                $this->stream(
+                    json_encode($errorData),
+                    true,
+                    'streamingData'
+                );
+            } catch (\Throwable $streamError) {
+                // Ignore stream errors if stream is already closed
+                Log::error('Failed to stream error data', [
+                    'error' => $streamError->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Liest aus einer HTTP-RequestException (z. B. 401) die API-Antwort aus,
+     * damit verständlichere Fehlermeldungen angezeigt werden können.
+     */
+    private function extractApiErrorDetail(\Throwable $e): string
+    {
+        $previous = $e->getPrevious();
+        if (! $previous instanceof RequestException || ! isset($previous->response)) {
+            return '';
+        }
+
+        $response = $previous->response;
+        $status = $response->status();
+        $body = $response->json();
+        if (! is_array($body)) {
+            $raw = $response->body();
+            if ($raw !== '' && strlen($raw) <= 500) {
+                return $raw;
+            }
+
+            return $status === 401
+                ? 'Nicht autorisiert. Bitte prüfen Sie Ihren OpenWebUI API-Token in den Einstellungen.'
+                : '';
+        }
+
+        $detail = $body['detail'] ?? $body['error'] ?? $body['message'] ?? null;
+        if (is_string($detail)) {
+            return $detail;
+        }
+        if (is_array($detail)) {
+            return json_encode($detail, JSON_UNESCAPED_UNICODE);
+        }
+        if ($status === 401) {
+            return 'Nicht autorisiert. Bitte prüfen Sie Ihren OpenWebUI API-Token in den Einstellungen.';
+        }
+
+        return '';
     }
 };
 
 ?>
 
 <div class="flex flex-col w-full">
-    <flux:card class="flex flex-col">
+    <flux:card class="flex flex-col glass-card">
         <div class="p-4 space-y-4" id="chat-messages">
             @if (empty($messages) && !$isStreaming)
                 <div class="flex items-center justify-center py-8 text-zinc-500 dark:text-zinc-400">
@@ -284,7 +362,7 @@ $streamResponse = function () {
                         @else
                             <div
                                 class="prose prose-sm max-h-fit max-w-fit min-w-24 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-700"
-                                x-data="markdownProcessor()"
+                                x-data="markdownProcessor"
                             >
                                 <flux:heading>AI</flux:heading>
 
@@ -346,7 +424,7 @@ $streamResponse = function () {
                     <div class="flex gap-3 justify-start">
                         <div
                             class="prose prose-sm max-h-fit max-w-fit min-w-24 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-700"
-                            x-data="markdownProcessor()"
+                            x-data="markdownProcessor"
                         >
                             <flux:heading>AI</flux:heading>
 
@@ -451,116 +529,10 @@ $streamResponse = function () {
 <script>
     document.addEventListener('livewire:initialized', () => {
         const container = document.getElementById('chat-messages');
-        
-        Livewire.hook('commit', ({ component, commit, respond, succeed, fail }) => {
-            succeed(({ snapshot, effect }) => {
-                if (container) {
-                    container.scrollTop = container.scrollHeight;
-                }
+        Livewire.hook('commit', ({ succeed }) => {
+            succeed(() => {
+                if (container) container.scrollTop = container.scrollHeight;
             });
         });
     });
-
-    function markdownProcessor() {
-        return {
-            md: null,
-            streamData: {
-                text: '',
-                thinking: '',
-                toolCalls: [],
-                toolResults: [],
-            },
-            showThinking: false,
-            html: '',
-            thinkingHtml: '',
-
-            init() {
-                // Initialize markdown-it with GFM support (tables, breaks, etc.)
-                if (typeof window.markdownit !== 'undefined') {
-                    this.md = window.markdownit({
-                        html: false,
-                        breaks: true,
-                        linkify: true,
-                        typographer: true,
-                    });
-                } else {
-                    console.error('markdown-it is not loaded');
-                    this.md = null;
-                }
-                
-                // Initial render
-                this.render();
-                
-                // Use MutationObserver to watch for changes from wire:stream
-                // This is the key difference - MutationObserver catches Livewire's DOM updates
-                new MutationObserver(() => this.render()).observe(this.$refs.raw, {
-                    childList: true,
-                    characterData: true,
-                    subtree: true,
-                });
-            },
-
-            render() {
-                const raw = this.$refs.raw;
-                if (!raw) {
-                    return;
-                }
-
-                const content = raw.innerText?.trim() || '';
-                if (!content) {
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(content);
-                    this.streamData = {
-                        text: data.text || '',
-                        thinking: data.thinking || '',
-                        toolCalls: data.toolCalls || [],
-                        toolResults: data.toolResults || [],
-                    };
-                    this.renderMarkdown();
-                } catch (e) {
-                    // Silently ignore ALL parse errors during streaming
-                    // JSON chunks may arrive incomplete and will be complete eventually
-                    // Only log errors when streaming is complete and JSON is still invalid
-                    if (!$wire.isStreaming && content !== '{}' && content.length > 0) {
-                        console.error('Failed to parse stream data:', e, 'Content:', content.substring(0, 500));
-                    }
-                }
-            },
-
-            renderMarkdown() {
-                if (this.md) {
-                    // Use markdown-it to render markdown with table support
-                    this.html = this.md.render(this.streamData.text || '');
-                    this.thinkingHtml = this.md.render(this.streamData.thinking || '');
-                } else {
-                    // Fallback: simple text rendering with line breaks
-                    this.html = (this.streamData.text || '').replace(/\n/g, '<br>');
-                    this.thinkingHtml = (this.streamData.thinking || '').replace(/\n/g, '<br>');
-                }
-            },
-
-            hasThinking() {
-                return this.streamData.thinking && this.streamData.thinking.length > 0;
-            },
-
-            isCurrentlyThinking() {
-                return this.hasThinking() && !this.showThinking;
-            },
-
-            hasToolCalls() {
-                return this.streamData.toolCalls && this.streamData.toolCalls.length > 0;
-            },
-
-            isCurrentlyUsingTools() {
-                return this.hasToolCalls() && (!this.streamData.text || this.streamData.text.length === 0);
-            },
-
-            toggleThinking() {
-                this.showThinking = !this.showThinking;
-            },
-        };
-    }
 </script>
