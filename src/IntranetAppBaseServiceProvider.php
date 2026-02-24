@@ -29,6 +29,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     public function bootingPackage()
     {
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -44,12 +45,14 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             name: 'prism-chat',
             viewPath: __DIR__.'/../resources/views/livewire/prism-chat.blade.php'
         );
-        
+
         // Also register with namespace
         Livewire::addComponent(
             name: 'intranet-app-base::prism-chat',
             viewPath: __DIR__.'/../resources/views/livewire/prism-chat.blade.php'
         );
+
+        Livewire::component('intranet-app-base.ihre-aufgaben', \Hwkdo\IntranetAppBase\Livewire\IhreAufgaben::class);
     }
 
     public function bootPackage()
