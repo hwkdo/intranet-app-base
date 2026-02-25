@@ -22,6 +22,14 @@ class IhreAufgaben extends Component
         return $this->groupedTasks->flatten()->count();
     }
 
+    #[Computed]
+    public function hideWhenEmpty(): bool
+    {
+        $user = Auth::user();
+
+        return (bool) ($user->settings->dashboard->hideAufgabenWhenEmpty ?? false);
+    }
+
     public function render(): \Illuminate\Contracts\View\View
     {
         return view('intranet-app-base::livewire.ihre-aufgaben');
