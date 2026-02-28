@@ -52,6 +52,11 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             viewPath: __DIR__.'/../resources/views/livewire/prism-chat.blade.php'
         );
 
+        Livewire::addComponent(
+            name: 'intranet-app-base::app-background-image',
+            viewPath: __DIR__.'/../resources/views/livewire/app-background-image.blade.php'
+        );
+
         Livewire::component('intranet-app-base.ihre-aufgaben', \Hwkdo\IntranetAppBase\Livewire\IhreAufgaben::class);
     }
 
