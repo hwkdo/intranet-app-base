@@ -32,6 +32,20 @@ class AdminSettings extends Component
         } else {
             $this->appSettings = (new $appSettingsClass())->toArray();
         }
+
+        $this->encodeArraySettingsForTextarea();
+    }
+
+    /**
+     * Convert array values to JSON strings so they can be displayed and edited in textareas.
+     */
+    private function encodeArraySettingsForTextarea(): void
+    {
+        foreach ($this->appSettings as $key => $value) {
+            if (is_array($value)) {
+                $this->appSettings[$key] = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
     }
 
     public function save(): void
@@ -44,6 +58,8 @@ class AdminSettings extends Component
             );
             return;
         }
+
+        $this->decodeJsonSettingsToArray();
 
         $settings = $this->settingsId ? $this->settingsModelClass::find($this->settingsId) : null;
 
@@ -59,6 +75,8 @@ class AdminSettings extends Component
             $this->settingsId = $settings->id;
         }
 
+        $this->encodeArraySettingsForTextarea();
+
         Flux::toast(
             heading: 'Einstellungen gespeichert',
             text: 'Die Administrator-Einstellungen wurden erfolgreich aktualisiert.',
@@ -68,7 +86,7 @@ class AdminSettings extends Component
 
     public function getSettingsStructureProperty(): array
     {
-        $settingsData = $this->appSettingsClass::from($this->appSettings);
+        $settingsData = new $this->appSettingsClass();
         $structure = [];
 
         foreach ($settingsData->getPropertiesWithDescriptions() as $key => $field) {
@@ -122,6 +140,31 @@ class AdminSettings extends Component
         }
 
         return $structure;
+    }
+
+    /**
+     * Decode JSON strings back to arrays for array-typed settings before passing to Data::from().
+     */
+    private function decodeJsonSettingsToArray(): void
+    {
+        $structure = $this->getSettingsStructureProperty();
+        foreach ($structure as $field) {
+            if (($field['type'] ?? '') !== 'json') {
+                continue;
+            }
+            $key = $field['key'] ?? null;
+            if ($key === null || ! array_key_exists($key, $this->appSettings)) {
+                continue;
+            }
+            $value = $this->appSettings[$key];
+            if (! is_string($value)) {
+                continue;
+            }
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $this->appSettings[$key] = $decoded;
+            }
+        }
     }
 
     public function render()

@@ -33,28 +33,33 @@ abstract class BaseAppSettings extends Data implements Wireable
     }
 
     /**
-     * Gibt alle Eigenschaften mit ihren Beschreibungen zurück
+     * Gibt alle Eigenschaften mit ihren Beschreibungen zurück.
+     * Interne Properties (Namen mit führendem _) werden ausgelassen, z. B. _additional aus Spatie Laravel Data.
      */
     public function getPropertiesWithDescriptions(): array
     {
         $reflection = new \ReflectionClass($this);
         $properties = [];
-        
+
         foreach ($reflection->getProperties() as $property) {
+            if (str_starts_with($property->getName(), '_')) {
+                continue;
+            }
+
             $attributes = $property->getAttributes(Description::class);
             $description = null;
-            
-            if (!empty($attributes)) {
+
+            if (! empty($attributes)) {
                 $description = $attributes[0]->newInstance()->description;
             }
-            
+
             $properties[$property->getName()] = [
                 'value' => $property->getValue($this),
                 'type' => $property->getType()?->getName(),
                 'description' => $description,
             ];
         }
-        
+
         return $properties;
     }
 }

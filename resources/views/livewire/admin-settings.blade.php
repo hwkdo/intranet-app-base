@@ -206,7 +206,7 @@ new class extends Component
                 @if(!$loop->last)
                     <flux:separator variant="subtle" />
                 @endif
-            @elseif($field['type'] === 'array')
+            @elseif($field['type'] === 'array' || $field['type'] === 'json')
                 <div class="space-y-2">
                     <flux:text class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                         {{ $field['label'] }}
@@ -218,8 +218,8 @@ new class extends Component
                     @endif
                     <flux:textarea 
                         wire:model="appSettings.{{ $field['key'] }}"
-                        placeholder="JSON Array (z.B. [&quot;item1&quot;, &quot;item2&quot;])"
-                        rows="3"
+                        placeholder="JSON (z.B. {&quot;default&quot;: [&quot;OU=...,DC=...&quot;], &quot;schulung&quot;: []})"
+                        rows="5"
                     />
                 </div>
                 @if(!$loop->last)
