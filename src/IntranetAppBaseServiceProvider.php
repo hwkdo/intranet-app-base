@@ -30,6 +30,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
