@@ -15,5 +15,7 @@ class DashboardWidgetDefinition
         public int $minW = 3,
         public int $minH = 2,
         public bool $defaultEnabled = true,
+        public bool $mandatory = false,
+        public ?string $sourceApp = null,
     ) {}
 }

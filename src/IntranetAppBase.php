@@ -2,6 +2,8 @@
 
 namespace Hwkdo\IntranetAppBase;
 
+use Hwkdo\IntranetAppBase\Interfaces\IntranetAppInterface;
+
 class IntranetAppBase {
 
     public static function getRequiredPermissionsFromAppConfig(array $appConfig): array {        
@@ -137,5 +139,30 @@ class IntranetAppBase {
         }
 
         return null;
+    }
+
+    /**
+     * Lesbarer App-Name für Haupt-Dashboard-Sektionen (z. B. Widget-Menü).
+     * Fällt auf den Identifier zurück, wenn keine passende App geladen werden kann.
+     */
+    public static function displayNameForAppIdentifier(string $identifier): string
+    {
+        foreach (self::getIntranetAppPackages() as $packageName => $packageData) {
+            $appClass = self::getAppClass($packageName, $packageData);
+
+            if ($appClass === null || ! class_exists($appClass)) {
+                continue;
+            }
+
+            if (! is_subclass_of($appClass, IntranetAppInterface::class)) {
+                continue;
+            }
+
+            if ($appClass::identifier() === $identifier) {
+                return $appClass::app_name();
+            }
+        }
+
+        return $identifier;
     }
 }

@@ -3,7 +3,7 @@
     'description' => null,
 ])
 
-<flux:card class="flex h-full flex-col overflow-hidden">
+<flux:card class="glass-card flex h-full min-h-0 flex-col overflow-hidden border border-zinc-200 dark:border-white/10 rounded-xl">
     <div class="mb-3 shrink-0">
         <flux:heading size="sm">{{ $title }}</flux:heading>
         @if($description)
