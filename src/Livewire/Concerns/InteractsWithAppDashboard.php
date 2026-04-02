@@ -14,7 +14,7 @@ trait InteractsWithAppDashboard
 
     private const WIDGET_ITEM_COUNT_MAX = 30;
 
-    /** @var array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool}> */
+    /** @var array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, supportsItemCount: bool}> */
     public array $availableWidgets = [];
 
     /** @var list<string> */
@@ -53,6 +53,7 @@ trait InteractsWithAppDashboard
                 'minW' => $definition->minW,
                 'minH' => $definition->minH,
                 'defaultEnabled' => $definition->defaultEnabled,
+                'supportsItemCount' => $definition->supportsItemCount,
             ];
         }, $definitions);
 
@@ -193,7 +194,7 @@ trait InteractsWithAppDashboard
     }
 
     /**
-     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool}>
+     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, supportsItemCount: bool}>
      */
     public function enabledWidgetDefinitions(): array
     {
@@ -207,7 +208,9 @@ trait InteractsWithAppDashboard
 
     public function supportsWidgetItemCount(string $widgetKey): bool
     {
-        return in_array($widgetKey, $this->availableWidgetKeys(), true);
+        $widget = collect($this->availableWidgets)->firstWhere('key', $widgetKey);
+
+        return (bool) ($widget['supportsItemCount'] ?? false);
     }
 
     public function widgetItemCountValue(string $widgetKey): int
@@ -251,7 +254,12 @@ trait InteractsWithAppDashboard
     {
         $counts = [];
 
-        foreach ($this->availableWidgetKeys() as $widgetKey) {
+        foreach ($this->availableWidgets as $widget) {
+            $widgetKey = $widget['key'];
+            if (! ($widget['supportsItemCount'] ?? false)) {
+                continue;
+            }
+
             $rawValue = $rawCounts[$widgetKey] ?? 5;
             $value = is_numeric($rawValue) ? (int) $rawValue : 5;
             $counts[$widgetKey] = min(max($value, self::WIDGET_ITEM_COUNT_MIN), self::WIDGET_ITEM_COUNT_MAX);

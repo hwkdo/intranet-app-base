@@ -4,7 +4,6 @@ namespace Hwkdo\IntranetAppBase\Livewire\Concerns;
 
 use Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService;
 use Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 
 trait InteractsWithMainDashboard
@@ -88,7 +87,7 @@ trait InteractsWithMainDashboard
     }
 
     /**
-     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, sourceApp: ?string}>
+     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, sourceApp: ?string, supportsItemCount: bool}>
      */
     protected function handleMainDashboardEnabledWidgetDefinitions(): array
     {
@@ -102,7 +101,9 @@ trait InteractsWithMainDashboard
 
     protected function handleMainDashboardSupportsWidgetItemCount(string $widgetKey): bool
     {
-        return in_array($this->baseCountableWidgetKey($widgetKey), $this->countableWidgetKeys(), true);
+        $widget = collect($this->availableWidgets)->firstWhere('key', $widgetKey);
+
+        return (bool) ($widget['supportsItemCount'] ?? false);
     }
 
     protected function handleMainDashboardWidgetItemCountValue(string $widgetKey): int

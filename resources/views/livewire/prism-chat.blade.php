@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\User;
 use Hwkdo\IntranetAppBase\Services\McpServerService;
+use Hwkdo\OpenwebuiApiLaravel\Services\OpenWebUiUserService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -28,16 +30,27 @@ new class extends Component
     public bool $useMcpTools = true;
     public ?string $appIdentifier = null;
 
+    /** Wenn true: Layout für Einbettung in Dashboard-Widgets (Höhe begrenzt, Nachrichtenbereich scrollt). */
+    public bool $embedded = false;
+
+    /**
+     * Wenn true: derselbe System-Prompt wie beim OAuth-Sync nach Open WebUI (OpenWebUiUserService::setSystemPrompt)
+     * wird lokal aus Config + Benutzer gebaut und an die Completion angehängt (OWUI-API macht das nicht von selbst).
+     */
+    public bool $injectOpenWebUiUserSystemPrompt = true;
+
     /** @var string|Provider|null Von Livewire gesetzt (z. B. 'openwebui-completions'), wird bei Nutzung normalisiert. */
     public string|Provider|null $provider = null;
 
-    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null): void
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false): void
     {
         $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
         $this->apiKey = $apiKey;
         $this->baseUrl = $baseUrl ?? config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api');
         $this->useMcpTools = $useMcpTools;
         $this->appIdentifier = $appIdentifier;
+        $this->injectOpenWebUiUserSystemPrompt = (bool) $injectOpenWebUiUserSystemPrompt;
+        $this->embedded = (bool) $embedded;
         $this->provider = $this->normalizeProvider($this->provider ?? $provider);
     }
 
@@ -129,6 +142,16 @@ new class extends Component
                     'api_key' => $this->apiKey,
                 ])
                 ->withMessages($prismMessages);
+
+            if ($this->injectOpenWebUiUserSystemPrompt && class_exists(OpenWebUiUserService::class)) {
+                $intranetUser = Auth::user();
+                if ($intranetUser instanceof User) {
+                    $localSystem = app(OpenWebUiUserService::class)->buildSystemPromptForUser($intranetUser);
+                    if ($localSystem !== '') {
+                        $prismRequest = $prismRequest->withSystemPrompt($localSystem);
+                    }
+                }
+            }
 
             // Füge MCP-Tools hinzu wenn aktiviert
             if ($this->useMcpTools && ! empty($this->appIdentifier)) {
@@ -345,9 +368,18 @@ new class extends Component
 
 ?>
 
-<div class="flex flex-col w-full">
-    <flux:card class="flex flex-col glass-card">
-        <div class="p-4 space-y-4" id="chat-messages">
+<div @class([
+    'flex flex-col w-full',
+    'h-full min-h-0 flex-1' => $embedded,
+])>
+    <flux:card @class([
+        'flex flex-col glass-card',
+        'min-h-0 flex-1 overflow-hidden' => $embedded,
+    ])>
+        <div @class([
+            'p-4 space-y-4',
+            'flex-1 min-h-0 overflow-y-auto' => $embedded,
+        ]) id="chat-messages">
             @if (empty($messages) && !$isStreaming)
                 <div class="flex items-center justify-center py-8 text-zinc-500 dark:text-zinc-400">
                     <flux:text>Stellen Sie eine Frage, um zu beginnen...</flux:text>
@@ -504,7 +536,10 @@ new class extends Component
             @endif
         </div>
 
-        <div class="border-t border-zinc-200 dark:border-zinc-700 p-4">
+        <div @class([
+            'border-t border-zinc-200 dark:border-zinc-700 p-4',
+            'shrink-0' => $embedded,
+        ])>
             <form wire:submit="sendMessage" class="flex gap-2">
                 <flux:input
                     wire:model="prompt"

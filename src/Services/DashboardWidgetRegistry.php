@@ -109,6 +109,7 @@ class DashboardWidgetRegistry
             minW: $definition->minW,
             minH: $definition->minH,
             defaultEnabled: $definition->defaultEnabled,
+            supportsItemCount: $definition->supportsItemCount,
             mandatory: false,
             sourceApp: $appIdentifier,
         );
