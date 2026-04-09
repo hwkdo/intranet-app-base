@@ -19,7 +19,7 @@ class D3RechnungSuchenTool extends Tool
 {
     protected string $name = 'd3_rechnung_suchen';
 
-    protected string $description = 'Sucht Rechnungsdokumente (Zahlungsbelege) im D3 DMS und liefert Treffer inklusive Dokument-ID (T-Nummer), relevanter Properties und Deep-Link.';
+    protected string $description = 'Nur zur Auflösung einer D3-Dokument-ID aus Freitext, wenn nirgends schon T… bekannt ist. NICHT aufrufen, wenn assets_suchen oder assets_abfragen im Treffer invoice_number im Format T+Ziffern liefern — dann d3_rechnung_analysieren(id=invoice_number). Liefert nur Trefferliste ohne OCR. NICHT wählen, wenn der Nutzer eine T-Nummer nennt oder Beleginhalt braucht — dann d3_rechnung_analysieren.';
 
     public function handle(Request $request): Response|ResponseFactory
     {
@@ -84,7 +84,7 @@ class D3RechnungSuchenTool extends Tool
     {
         return [
             'suchbegriff' => $schema->string()
-                ->description('Volltext-Suchbegriff für D3 (z. B. BEN, Seriennummer, IMEI, Rechnungsnummer).')
+                ->description('Nur nutzen, wenn keine T-Nummer bekannt ist. Volltext-Suchbegriff für D3 (z. B. BEN, Seriennummer, IMEI, Rechnungsnummer als Freitext). Ergebnis: Treffer mit id=T… — für Beleginhalt danach d3_rechnung_analysieren aufrufen.')
                 ->required(),
             'limit' => $schema->integer()
                 ->description('Maximale Anzahl Treffer (1-100, Standard 50).')
