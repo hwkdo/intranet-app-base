@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Hwkdo\IntranetAppBase\Commands;
 
 use Hwkdo\IntranetAppBase\Events\ExternalAppConfigSynced;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class SyncIntranetAppPermissions extends Command
 {
@@ -16,6 +20,8 @@ class SyncIntranetAppPermissions extends Command
 
     public function handle(): int
     {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $appIdentifier = $this->option('app');
         $all = $this->option('all');
 
@@ -145,10 +151,7 @@ class SyncIntranetAppPermissions extends Command
 
             if (! empty($role['add_to_existing'])) {
                 foreach ($role['permissions'] as $permissionName) {
-                    if (! $roleModel->hasPermissionTo($permissionName)) {
-                        $roleModel->givePermissionTo($permissionName);
-                        $this->line("    ✓ Permission '{$permissionName}' zu Rolle '{$role['name']}' hinzugefügt");
-                    }
+                    $this->givePermissionToRoleIdempotent($roleModel, $permissionName, $role['name']);
                 }
             } else {
                 $roleModel->syncPermissions($role['permissions']);
@@ -215,5 +218,44 @@ class SyncIntranetAppPermissions extends Command
                 $this->line("    ✓ Rolle '{$roleData['name']}' zu {$usersWithoutRole->count()} User(n) hinzugefügt");
             }
         }
+    }
+
+    /**
+     * Verhindert Abbruch bei parallelen Sync-Läufen oder veraltetem Permission-Cache (Duplicate-Key auf role_has_permissions).
+     */
+    private function givePermissionToRoleIdempotent(Role $roleModel, string $permissionName, string $roleDisplayName): void
+    {
+        if ($roleModel->hasPermissionTo($permissionName)) {
+            return;
+        }
+
+        try {
+            $roleModel->givePermissionTo($permissionName);
+            $this->line("    ✓ Permission '{$permissionName}' zu Rolle '{$roleDisplayName}' hinzugefügt");
+        } catch (QueryException $e) {
+            if (! $this->isDuplicateKeyQueryException($e)) {
+                throw $e;
+            }
+
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+        }
+    }
+
+    private function isDuplicateKeyQueryException(QueryException $e): bool
+    {
+        $driverCode = $e->errorInfo[1] ?? null;
+
+        if ($driverCode === 1062) {
+            return true;
+        }
+
+        if ($driverCode === 19) {
+            return true;
+        }
+
+        $message = $e->getMessage();
+
+        return str_contains($message, 'Duplicate entry')
+            || str_contains($message, 'UNIQUE constraint failed');
     }
 }
