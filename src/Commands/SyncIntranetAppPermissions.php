@@ -8,6 +8,7 @@ use Hwkdo\IntranetAppBase\Events\ExternalAppConfigSynced;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -123,8 +124,14 @@ class SyncIntranetAppPermissions extends Command
                 ->pluck('name')
                 ->toArray();
         } else {
-            $appPermissions = Permission::where('name', 'like', "%-app-{$identifier}%")
-                ->orWhere('name', 'like', "app-{$identifier}%")
+            // Strict scope: only permissions that clearly belong to this app prefix.
+            // This prevents accidental deletion of legacy permissions like
+            // "manage-legacy-app-bestellungen" when syncing "bestellungen".
+            $appPermissions = Permission::where(function ($query) use ($identifier): void {
+                $query->where('name', 'like', 'see-app-'.$identifier.'%')
+                    ->orWhere('name', 'like', 'manage-app-'.$identifier.'%')
+                    ->orWhere('name', 'like', 'app-'.$identifier.'-%');
+            })
                 ->pluck('name')
                 ->toArray();
         }
@@ -167,8 +174,10 @@ class SyncIntranetAppPermissions extends Command
                 ->pluck('name')
                 ->toArray();
         } else {
-            $appRoles = Role::where('name', 'like', "%{$identifier}%")
-                ->orWhere('name', 'like', "App-{$identifier}%")
+            $appPrefix = 'App-'.$this->formatIdentifierForRolePrefix($identifier).'-';
+            // Strict scope: only app-prefixed roles, e.g. "App-Bestellungen-*".
+            // Legacy roles like "App-Legacy-Bestellungen-Admin" are not matched.
+            $appRoles = Role::where('name', 'like', $appPrefix.'%')
                 ->pluck('name')
                 ->toArray();
         }
@@ -257,5 +266,13 @@ class SyncIntranetAppPermissions extends Command
 
         return str_contains($message, 'Duplicate entry')
             || str_contains($message, 'UNIQUE constraint failed');
+    }
+
+    private function formatIdentifierForRolePrefix(string $identifier): string
+    {
+        return (string) Str::of($identifier)
+            ->replace('-', ' ')
+            ->title()
+            ->replace(' ', '-');
     }
 }
