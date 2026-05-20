@@ -4,7 +4,73 @@ namespace Hwkdo\IntranetAppBase;
 
 use Hwkdo\IntranetAppBase\Interfaces\IntranetAppInterface;
 
-class IntranetAppBase {
+class IntranetAppBase
+{
+    public static function packageNameForIdentifier(string $identifier): string
+    {
+        return "hwkdo/intranet-app-{$identifier}";
+    }
+
+    /**
+     * @param  array{homepage?: ?string, support?: ?array<string, string>}  $packageData
+     * @return array{owner: string, repo: string}|null
+     */
+    public static function parseGithubRepositoryFromPackageData(array $packageData): ?array
+    {
+        $candidates = [];
+
+        if (isset($packageData['homepage']) && is_string($packageData['homepage'])) {
+            $candidates[] = $packageData['homepage'];
+        }
+
+        $support = $packageData['support'] ?? null;
+
+        if (is_array($support)) {
+            foreach (['source', 'issues', 'docs'] as $key) {
+                if (isset($support[$key]) && is_string($support[$key])) {
+                    $candidates[] = $support[$key];
+                }
+            }
+        }
+
+        foreach ($candidates as $url) {
+            $repository = self::parseGithubRepositoryUrl($url);
+
+            if ($repository !== null) {
+                return $repository;
+            }
+        }
+
+        $packageName = $packageData['name'] ?? null;
+
+        if (is_string($packageName) && str_starts_with($packageName, 'hwkdo/intranet-app-')) {
+            $slug = str($packageName)->after('hwkdo/')->toString();
+
+            return [
+                'owner' => 'hwkdo',
+                'repo' => $slug,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{owner: string, repo: string}|null
+     */
+    public static function parseGithubRepositoryUrl(string $url): ?array
+    {
+        if (! preg_match('#github\.com/([^/]+)/([^/]+)#i', $url, $matches)) {
+            return null;
+        }
+
+        $repo = rtrim($matches[2], '.git');
+
+        return [
+            'owner' => $matches[1],
+            'repo' => $repo,
+        ];
+    }
 
     public static function getRequiredPermissionsFromAppConfig(array $appConfig): array {        
         $permissions = collect();

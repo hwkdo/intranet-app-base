@@ -149,6 +149,7 @@ class GenerateAppFromTemplate extends Command
             'Template - Übersicht' => "{$appName} - Übersicht",
             'Template - Admin' => "{$appName} - Admin",
             'Template - Meine Einstellungen' => "{$appName} - Meine Einstellungen",
+            'Template - App-Info' => "{$appName} - App-Info",
             'TestApp' => $appName,
             
             // Descriptions

@@ -32,6 +32,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\AppPackageVersionService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\GithubAppReleaseService::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -60,6 +62,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         );
 
         Livewire::component('intranet-app-base.ihre-aufgaben', \Hwkdo\IntranetAppBase\Livewire\IhreAufgaben::class);
+        Livewire::component('intranet-app-base.app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
+        Livewire::component('intranet-app-base::app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
     }
 
     public function bootPackage()

@@ -9,4 +9,14 @@ return [
      * @var array<int, class-string>
      */
     'main_dashboard_core_widget_providers' => [],
+
+    /**
+     * Optional GitHub personal access token for higher API rate limits (Releases auf App-Info-Seiten).
+     */
+    'github_token' => env('GITHUB_TOKEN'),
+
+    /**
+     * Cache-TTL in Sekunden für GitHub-Release-Listen pro Repository.
+     */
+    'github_release_cache_ttl' => (int) env('GITHUB_RELEASE_CACHE_TTL', 3600),
 ];
