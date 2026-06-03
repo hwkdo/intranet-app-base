@@ -12,6 +12,13 @@ class GenerateAppFromTemplate extends Command
 
     public $description = 'Generates a new intranet app from the template package.';
 
+    public static function settingsTableNameForIdentifier(string $identifier): string
+    {
+        $slug = str_replace('-', '_', $identifier);
+
+        return "intranet_app_{$slug}_settings";
+    }
+
     public function handle(): int
     {
         $identifier = $this->argument('identifier');
@@ -160,8 +167,8 @@ class GenerateAppFromTemplate extends Command
             'see-app-template' => "see-app-{$identifier}",
             'manage-app-template' => "manage-app-{$identifier}",
             
-            // Database table transformations
-            'intranet_app_template_settings' => "intranet_app_{$identifier}_settings",
+            // Database table transformations (hyphens → underscores, matches Eloquent table names)
+            'intranet_app_template_settings' => self::settingsTableNameForIdentifier($identifier),
             'IntranetAppTemplateSettings' => "IntranetApp" . Str::studly($identifier) . "Settings",
         ];
 
