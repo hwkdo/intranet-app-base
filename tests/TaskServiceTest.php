@@ -144,6 +144,38 @@ function makeUserWithoutHasRole(): Authenticatable
     };
 }
 
+function makeUserWithPermission(string $permission): Authenticatable
+{
+    return new class($permission) implements Authenticatable
+    {
+        public function __construct(private readonly string $permission) {}
+
+        public function can(string $ability, mixed $arguments = []): bool
+        {
+            return $ability === $this->permission;
+        }
+
+        public function hasRole(array|string $roleNames): bool
+        {
+            return false;
+        }
+
+        public function getAuthIdentifierName(): string { return 'id'; }
+
+        public function getAuthIdentifier(): mixed { return 1; }
+
+        public function getAuthPasswordName(): string { return 'password'; }
+
+        public function getAuthPassword(): string { return ''; }
+
+        public function getRememberToken(): ?string { return null; }
+
+        public function setRememberToken($value): void {}
+
+        public function getRememberTokenName(): string { return 'remember_token'; }
+    };
+}
+
 function makeTaskServiceForApp(string $appClass): TaskService
 {
     return new TaskService(
@@ -224,4 +256,15 @@ test('getTaskCount returns zero for user without required role', function () {
     $userWithWrongRole = makeUserWithRole('Irrelevant-Role');
 
     expect($service->getTaskCount($userWithWrongRole))->toBe(0);
+});
+
+test('user with app permission but without app role gets tasks', function () {
+    $service = makeTaskServiceForApp(TaskServiceTestApp::class);
+
+    $user = makeUserWithPermission('see-app-test');
+
+    $tasks = $service->getTasksForUser($user);
+
+    expect($tasks)->toHaveCount(1)
+        ->and($tasks->first()->title)->toBe('Test-Aufgabe');
 });

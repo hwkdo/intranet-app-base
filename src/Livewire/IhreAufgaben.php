@@ -30,6 +30,27 @@ class IhreAufgaben extends Component
         return (bool) ($user->settings->dashboard->hideAufgabenWhenEmpty ?? false);
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function getListeners(): array
+    {
+        $userId = Auth::id();
+
+        if ($userId === null) {
+            return [];
+        }
+
+        return [
+            "echo-private:App.Models.User.{$userId},.ticket.updated" => 'refreshTasks',
+        ];
+    }
+
+    public function refreshTasks(): void
+    {
+        unset($this->groupedTasks, $this->totalCount);
+    }
+
     public function render(): \Illuminate\Contracts\View\View
     {
         return view('intranet-app-base::livewire.ihre-aufgaben');

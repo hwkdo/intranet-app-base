@@ -89,14 +89,32 @@ class TaskService
     }
 
     /**
-     * Returns true when the user has at least one of the app's user or admin roles.
-     * If the app defines no roles, access is unrestricted.
-     * If the user object does not support hasRole(), access is granted.
+     * Returns true when the user may access the app's tasks.
+     * Checks app permissions via Gate first (respects Super Admin and direct grants),
+     * then falls back to configured user/admin roles.
+     * If the app defines no roles or permissions, access is unrestricted.
+     * If the user object supports neither can() nor hasRole(), access is granted.
      */
     private function userHasAppAccess(Authenticatable $user, string $appClass): bool
     {
         if (! is_a($appClass, IntranetAppInterface::class, true)) {
             return true;
+        }
+
+        $permissions = collect($appClass::roles_user()->get('permissions', []))
+            ->merge($appClass::roles_admin()->get('permissions', []))
+            ->unique()
+            ->filter()
+            ->values();
+
+        if ($permissions->isNotEmpty() && method_exists($user, 'can')) {
+            foreach ($permissions as $permission) {
+                if ($user->can($permission)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         if (! method_exists($user, 'hasRole')) {
