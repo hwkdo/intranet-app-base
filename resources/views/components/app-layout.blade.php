@@ -40,7 +40,7 @@
 
         <flux:separator class="md:hidden" />
 
-        <div class="flex-1 self-stretch max-md:pt-6">
+        <div class="flex-1 min-w-0 self-stretch max-md:pt-6">
             @if($wrapInCard)
                 <flux:card class="glass-card">
                     {{ $slot }}
