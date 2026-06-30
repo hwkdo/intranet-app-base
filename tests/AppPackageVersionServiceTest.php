@@ -15,6 +15,11 @@ test('parseGithubRepositoryUrl extracts owner and repo', function () {
         ->toBe(['owner' => 'hwkdo', 'repo' => 'intranet-app-assets']);
 });
 
+test('parseGithubRepositoryUrl does not strip it suffix from abwesenheit repo name', function () {
+    expect(IntranetAppBase::parseGithubRepositoryUrl('https://github.com/hwkdo/intranet-app-abwesenheit'))
+        ->toBe(['owner' => 'hwkdo', 'repo' => 'intranet-app-abwesenheit']);
+});
+
 test('parseGithubRepositoryFromPackageData falls back to package name slug', function () {
     expect(IntranetAppBase::parseGithubRepositoryFromPackageData([
         'name' => 'hwkdo/intranet-app-assets',

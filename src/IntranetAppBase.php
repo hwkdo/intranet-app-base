@@ -64,7 +64,7 @@ class IntranetAppBase
             return null;
         }
 
-        $repo = rtrim($matches[2], '.git');
+        $repo = preg_replace('/\.git$/i', '', $matches[2]) ?? $matches[2];
 
         return [
             'owner' => $matches[1],
