@@ -22,12 +22,13 @@ class AdminSettings extends Component
         if (class_exists($settingsModelClass)) {
             $settings = $settingsModelClass::current();
 
+            $defaults = (new $appSettingsClass())->toArray();
+
             if ($settings && $settings->settings) {
                 $this->settingsId = $settings->id;
-                $this->appSettings = $settings->settings->toArray();
+                $this->appSettings = array_merge($defaults, $settings->settings->toArray());
             } else {
-                // If no settings exist, initialize with defaults from the Data class
-                $this->appSettings = (new $appSettingsClass())->toArray();
+                $this->appSettings = $defaults;
             }
         } else {
             $this->appSettings = (new $appSettingsClass())->toArray();

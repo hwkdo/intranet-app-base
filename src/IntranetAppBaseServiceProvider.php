@@ -64,6 +64,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.ihre-aufgaben', \Hwkdo\IntranetAppBase\Livewire\IhreAufgaben::class);
         Livewire::component('intranet-app-base.app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
         Livewire::component('intranet-app-base::app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
+        Livewire::component('intranet-app-base::admin-settings', \Hwkdo\IntranetAppBase\Livewire\AdminSettings::class);
     }
 
     public function bootPackage()
