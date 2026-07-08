@@ -8,16 +8,31 @@ use Livewire\Component;
 class AdminSettings extends Component
 {
     public string $appIdentifier;
+
     public string $settingsModelClass;
+
     public string $appSettingsClass;
+
+    /** @var list<string> */
+    public array $excludedKeys = [];
+
     public array $appSettings = [];
+
     public ?int $settingsId = null;
 
-    public function mount(string $appIdentifier, string $settingsModelClass, string $appSettingsClass): void
-    {
+    /**
+     * @param  list<string>  $excludedKeys
+     */
+    public function mount(
+        string $appIdentifier,
+        string $settingsModelClass,
+        string $appSettingsClass,
+        array $excludedKeys = [],
+    ): void {
         $this->appIdentifier = $appIdentifier;
         $this->settingsModelClass = $settingsModelClass;
         $this->appSettingsClass = $appSettingsClass;
+        $this->excludedKeys = $excludedKeys;
 
         if (class_exists($settingsModelClass)) {
             $settings = $settingsModelClass::current();
@@ -91,6 +106,10 @@ class AdminSettings extends Component
         $structure = [];
 
         foreach ($settingsData->getPropertiesWithDescriptions() as $key => $field) {
+            if (in_array($key, $this->excludedKeys, true)) {
+                continue;
+            }
+
             $type = $field['type'];
             $label = __(str_replace('_', ' ', ucfirst($key)));
             $description = $field['description'];
