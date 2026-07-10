@@ -39,10 +39,16 @@ new class extends Component
      */
     public bool $injectOpenWebUiUserSystemPrompt = true;
 
+    /** App-spezifischer Zusatz zum System-Prompt (z. B. Fuhrpark-Buchungsregeln). */
+    public ?string $additionalSystemPrompt = null;
+
+    /** Relative Datumsangaben («morgen») per aktuellem Zeitbezug auflösen. */
+    public bool $injectTemporalContext = true;
+
     /** @var string|Provider|null Von Livewire gesetzt (z. B. 'openwebui-completions'), wird bei Nutzung normalisiert. */
     public string|Provider|null $provider = null;
 
-    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false): void
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true): void
     {
         $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
         $this->apiKey = $apiKey;
@@ -51,6 +57,10 @@ new class extends Component
         $this->appIdentifier = $appIdentifier;
         $this->injectOpenWebUiUserSystemPrompt = (bool) $injectOpenWebUiUserSystemPrompt;
         $this->embedded = (bool) $embedded;
+        $this->injectTemporalContext = (bool) $injectTemporalContext;
+        $this->additionalSystemPrompt = is_string($additionalSystemPrompt) && trim($additionalSystemPrompt) !== ''
+            ? trim($additionalSystemPrompt)
+            : null;
         $this->provider = $this->normalizeProvider($this->provider ?? $provider);
     }
 
@@ -74,6 +84,47 @@ new class extends Component
         }
 
         return Provider::Ollama;
+    }
+
+    private function resolveSystemPrompt(): string
+    {
+        $parts = [];
+
+        if ($this->injectOpenWebUiUserSystemPrompt && class_exists(OpenWebUiUserService::class)) {
+            $intranetUser = Auth::user();
+            if ($intranetUser instanceof User) {
+                $localSystem = app(OpenWebUiUserService::class)->buildSystemPromptForUser($intranetUser);
+                if ($localSystem !== '') {
+                    $parts[] = $localSystem;
+                }
+            }
+        }
+
+        if ($this->injectTemporalContext) {
+            $parts[] = $this->buildTemporalContext();
+        }
+
+        if ($this->additionalSystemPrompt !== null) {
+            $parts[] = $this->additionalSystemPrompt;
+        }
+
+        return implode("\n\n", array_filter($parts));
+    }
+
+    private function buildTemporalContext(): string
+    {
+        $now = now()->locale('de');
+        $timezone = (string) config('app.timezone', 'Europe/Berlin');
+
+        return sprintf(
+            'Zeitbezug (Referenz für alle relativen Datums- und Zeitangaben): Heute ist %s, aktuelle Uhrzeit %s (%s). '.
+            'Löse «heute», «morgen», «übermorgen», «nächsten Montag» usw. selbst in konkrete ISO-8601-Werte auf (z. B. morgen 08:00 → %sT08:00:00). '.
+            'Frage nicht nach dem Datum, wenn die relative Angabe eindeutig ist — handle direkt mit den MCP-Tools.',
+            $now->isoFormat('dddd, D. MMMM YYYY'),
+            $now->format('H:i'),
+            $timezone,
+            $now->copy()->addDay()->toDateString()
+        );
     }
 
     public function sendMessage(): void
@@ -143,14 +194,9 @@ new class extends Component
                 ])
                 ->withMessages($prismMessages);
 
-            if ($this->injectOpenWebUiUserSystemPrompt && class_exists(OpenWebUiUserService::class)) {
-                $intranetUser = Auth::user();
-                if ($intranetUser instanceof User) {
-                    $localSystem = app(OpenWebUiUserService::class)->buildSystemPromptForUser($intranetUser);
-                    if ($localSystem !== '') {
-                        $prismRequest = $prismRequest->withSystemPrompt($localSystem);
-                    }
-                }
+            $systemPrompt = $this->resolveSystemPrompt();
+            if ($systemPrompt !== '') {
+                $prismRequest = $prismRequest->withSystemPrompt($systemPrompt);
             }
 
             // Füge MCP-Tools hinzu wenn aktiviert
@@ -206,7 +252,7 @@ new class extends Component
                                 if ($allTools->isNotEmpty()) {
                                     $prismRequest = $prismRequest
                                         ->withTools($allTools->toArray())
-                                        ->withMaxSteps(5);
+                                        ->withMaxSteps(10);
                                 }
                             }
                         }
@@ -264,6 +310,21 @@ new class extends Component
                     'baseUrl' => $baseUrl,
                     'messageCount' => count($prismMessages),
                 ]);
+            }
+
+            if (empty(trim($streamData['text'])) && ! empty($streamData['toolCalls'])) {
+                $streamData['text'] = 'Die Anfrage wurde bearbeitet, aber es konnte keine Antwort formuliert werden. '
+                    .'Bitte die Frage erneut stellen oder in der App prüfen, ob die Aktion erfolgreich war.';
+
+                try {
+                    $this->stream(
+                        json_encode($streamData),
+                        true,
+                        'streamingData'
+                    );
+                } catch (\Throwable) {
+                    // Stream may already be closed
+                }
             }
 
             // Add complete answer to messages
