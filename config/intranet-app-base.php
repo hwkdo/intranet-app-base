@@ -19,4 +19,11 @@ return [
      * Cache-TTL in Sekunden für GitHub-Release-Listen pro Repository.
      */
     'github_release_cache_ttl' => (int) env('GITHUB_RELEASE_CACHE_TTL', 3600),
+
+    /**
+     * Host-Provider für dynamische Benachrichtigungstypen (z. B. News-Kategorien).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\NotificationTypeProviderInterface>>
+     */
+    'notification_type_providers' => [],
 ];

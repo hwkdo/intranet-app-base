@@ -2,6 +2,8 @@
 
 namespace Hwkdo\IntranetAppBase;
 
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
 use Spatie\LaravelPackageTools\Package;
@@ -34,6 +36,9 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\AppPackageVersionService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\GithubAppReleaseService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\IntranetNotificationGatewayInterface::class, \Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -65,6 +70,12 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
         Livewire::component('intranet-app-base::app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
         Livewire::component('intranet-app-base::admin-settings', \Hwkdo\IntranetAppBase\Livewire\AdminSettings::class);
+        Livewire::component('intranet-app-base::notification-settings', \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::class);
+        Livewire::component('intranet-app-base.notification-settings', \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::class);
+        Livewire::component('intranet-app-base::notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
+        Livewire::component('intranet-app-base.notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
+
+        Event::listen(NotificationSent::class, \Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification::class);
     }
 
     public function bootPackage()
