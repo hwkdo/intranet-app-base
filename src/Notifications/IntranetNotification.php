@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hwkdo\IntranetAppBase\Notifications;
 
 use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
+use Hwkdo\IntranetAppBase\Support\ActiveNotifiable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -25,12 +26,20 @@ abstract class IntranetNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
+        if (! ActiveNotifiable::matches($notifiable)) {
+            return [];
+        }
+
         return app(NotificationPreferenceResolver::class)
             ->viaChannels($notifiable, $this->typeKey());
     }
 
     public function shouldSend(object $notifiable, string $channel): bool
     {
+        if (! ActiveNotifiable::matches($notifiable)) {
+            return false;
+        }
+
         return app(NotificationPreferenceResolver::class)
             ->shouldSendOnChannel($notifiable, $this->typeKey(), $channel);
     }

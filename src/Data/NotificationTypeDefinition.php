@@ -18,7 +18,7 @@ class NotificationTypeDefinition
         public readonly ?string $description = null,
         public readonly bool $mandatory = false,
         public readonly bool $defaultEnabled = true,
-        public readonly array $defaultChannels = ['inbox', 'mail'],
+        public readonly array $defaultChannels = ['inbox'],
         public readonly ?array $availableChannels = null,
     ) {}
 

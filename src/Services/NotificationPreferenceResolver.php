@@ -25,7 +25,7 @@ class NotificationPreferenceResolver
         $definition = $this->catalog->find($typeKey);
 
         if ($definition === null) {
-            return ['database', 'mail'];
+            return ['database'];
         }
 
         $preference = $this->resolvePreference($notifiable, $definition);
