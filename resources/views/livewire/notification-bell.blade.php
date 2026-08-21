@@ -24,13 +24,12 @@
             @forelse($this->recentNotifications as $notification)
                 @php
                     $data = $notification->data;
-                    $isUnread = $notification->read_at === null;
                 @endphp
                 <flux:menu.item
                     :href="$data['url'] ?? '#'"
                     wire:navigate
                     wire:click="markAsRead('{{ $notification->id }}')"
-                    class="{{ $isUnread ? 'font-semibold' : '' }}"
+                    class="font-semibold"
                 >
                     <div class="min-w-0">
                         <div class="truncate">{{ $data['title'] ?? 'Benachrichtigung' }}</div>
@@ -38,7 +37,7 @@
                     </div>
                 </flux:menu.item>
             @empty
-                <div class="px-3 py-4 text-sm text-zinc-500">Keine Benachrichtigungen.</div>
+                <div class="px-3 py-4 text-sm text-zinc-500">Keine ungelesenen Benachrichtigungen.</div>
             @endforelse
 
             <flux:menu.separator />

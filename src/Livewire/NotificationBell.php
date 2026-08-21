@@ -69,7 +69,7 @@ class NotificationBell extends Component
     #[Computed]
     public function recentNotifications(): \Illuminate\Support\Collection
     {
-        return Auth::user()?->notifications()->limit(10)->get() ?? collect();
+        return Auth::user()?->unreadNotifications()->limit(10)->get() ?? collect();
     }
 
     public function render()
