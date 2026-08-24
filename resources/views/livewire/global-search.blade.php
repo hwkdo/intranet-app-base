@@ -32,7 +32,7 @@
                             @foreach ($results as $result)
                                 <a
                                     href="{{ $result->url }}"
-                                    wire:navigate
+                                    @if ($result->download) download @else wire:navigate @endif
                                     class="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                 >
                                     <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
@@ -80,18 +80,34 @@
             <flux:command.items>
                 @if (strlen(trim($searchQuery)) >= $this->minChars)
                     @forelse ($this->modalResponse->results as $result)
-                        <flux:command.item
-                            :href="$result->url"
-                            wire:navigate
-                            :icon="$result->icon"
-                        >
-                            <div class="min-w-0">
-                                <div class="truncate">{{ $result->title }}</div>
-                                @if ($result->subtitle)
-                                    <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
-                                @endif
-                            </div>
-                        </flux:command.item>
+                        @if ($result->download)
+                            <a
+                                href="{{ $result->url }}"
+                                download
+                                class="flex items-start gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                                <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
+                                <div class="min-w-0">
+                                    <div class="truncate">{{ $result->title }}</div>
+                                    @if ($result->subtitle)
+                                        <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
+                                    @endif
+                                </div>
+                            </a>
+                        @else
+                            <flux:command.item
+                                :href="$result->url"
+                                wire:navigate
+                                :icon="$result->icon"
+                            >
+                                <div class="min-w-0">
+                                    <div class="truncate">{{ $result->title }}</div>
+                                    @if ($result->subtitle)
+                                        <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
+                                    @endif
+                                </div>
+                            </flux:command.item>
+                        @endif
                     @empty
                         <div class="px-3 py-4 text-sm text-zinc-500">Keine Treffer gefunden.</div>
                     @endforelse
