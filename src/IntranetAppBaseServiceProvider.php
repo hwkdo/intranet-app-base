@@ -32,6 +32,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class, \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\AppPackageVersionService::class);
@@ -74,6 +76,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.notification-settings', \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::class);
         Livewire::component('intranet-app-base::notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
         Livewire::component('intranet-app-base.notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
+        Livewire::component('intranet-app-base::global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
+        Livewire::component('intranet-app-base.global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
 
         Event::listen(NotificationSent::class, \Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification::class);
     }

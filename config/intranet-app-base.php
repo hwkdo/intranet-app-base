@@ -26,4 +26,11 @@ return [
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\NotificationTypeProviderInterface>>
      */
     'notification_type_providers' => [],
+
+    /**
+     * Host-Provider für globale Suche (z. B. Benutzer).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SearchSourceInterface>>
+     */
+    'search_sources' => [],
 ];
