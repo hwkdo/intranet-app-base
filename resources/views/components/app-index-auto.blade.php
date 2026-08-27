@@ -10,6 +10,7 @@
 @php
     $welcomeTitle = $welcomeTitle ?? "Willkommen in der {$appName}";
     $welcomeDescription = $welcomeDescription ?? "Hier können Sie alle Aspekte der {$appName} verwalten.";
+    $canUseAi = \Hwkdo\IntranetAppBase\Support\AiUsage::allowed();
 
     // Use provided nav items or get from layout stack
     if (empty($navItems) && View::hasSection('nav-items')) {
@@ -67,14 +68,20 @@
                                 <flux:text size="sm" class="text-zinc-500">{{ $item['description'] ?? $item['label'] . ' verwalten' }}</flux:text>
                             </div>
                         </div>
-                        <flux:button
-                            :href="$item['href']"
-                            wire:navigate
-                            variant="primary"
-                            class="mt-4 w-full"
-                        >
-                            {{ $item['buttonText'] ?? $item['label'] . ' anzeigen' }}
-                        </flux:button>
+                        @if(! empty($item['requiresAiUsage']) && ! $canUseAi)
+                            <x-intranet-app-base::ai-usage-locked-button
+                                :label="$item['buttonText'] ?? $item['label'] . ' anzeigen'"
+                            />
+                        @else
+                            <flux:button
+                                :href="$item['href']"
+                                wire:navigate
+                                variant="primary"
+                                class="mt-4 w-full"
+                            >
+                                {{ $item['buttonText'] ?? $item['label'] . ' anzeigen' }}
+                            </flux:button>
+                        @endif
                     </flux:card>
                 @endif
             @endforeach
@@ -93,14 +100,20 @@
                                 <flux:text size="sm" class="text-zinc-500">{{ $item['description'] ?? $item['label'] . ' verwalten' }}</flux:text>
                             </div>
                         </div>
-                        <flux:button
-                            :href="$item['href']"
-                            wire:navigate
-                            variant="primary"
-                            class="mt-4 w-full"
-                        >
-                            {{ $item['buttonText'] ?? $item['label'] . ' öffnen' }}
-                        </flux:button>
+                        @if(! empty($item['requiresAiUsage']) && ! $canUseAi)
+                            <x-intranet-app-base::ai-usage-locked-button
+                                :label="$item['buttonText'] ?? $item['label'] . ' öffnen'"
+                            />
+                        @else
+                            <flux:button
+                                :href="$item['href']"
+                                wire:navigate
+                                variant="primary"
+                                class="mt-4 w-full"
+                            >
+                                {{ $item['buttonText'] ?? $item['label'] . ' öffnen' }}
+                            </flux:button>
+                        @endif
                     </flux:card>
                 @endif
             @endforeach

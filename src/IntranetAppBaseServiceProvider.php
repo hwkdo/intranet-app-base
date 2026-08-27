@@ -41,6 +41,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\IntranetNotificationGatewayInterface::class, \Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupCatalog::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupProgressStore::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(

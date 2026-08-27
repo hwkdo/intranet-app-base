@@ -33,4 +33,11 @@ return [
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SearchSourceInterface>>
      */
     'search_sources' => [],
+
+    /**
+     * Host-Provider für geführte User-Setups / Ersteinrichtung (z. B. Base-Pakete).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SetupProviderInterface>>
+     */
+    'setup_providers' => [],
 ];

@@ -6,6 +6,10 @@
     'wrapInCard' => true
 ])
 
+@php
+    $canUseAi = \Hwkdo\IntranetAppBase\Support\AiUsage::allowed();
+@endphp
+
 <div class="w-full">
     @if($heading || $subheading)
         <div class="glass-card mb-5 px-4 py-3">
@@ -27,12 +31,16 @@
                             <flux:separator :text="$navItem['label']" class="my-3" />
                         @endif
                     @elseif(!isset($navItem['permission']) || auth()->user()->can($navItem['permission']))
-                        <flux:navlist.item
-                            :href="$navItem['href']"
-                            wire:navigate
-                        >
-                            {{ $navItem['label'] }}
-                        </flux:navlist.item>
+                        @if(! empty($navItem['requiresAiUsage']) && ! $canUseAi)
+                            <x-intranet-app-base::ai-usage-locked-nav-item :label="$navItem['label']" />
+                        @else
+                            <flux:navlist.item
+                                :href="$navItem['href']"
+                                wire:navigate
+                            >
+                                {{ $navItem['label'] }}
+                            </flux:navlist.item>
+                        @endif
                     @endif
                 @endforeach
             </flux:navlist>

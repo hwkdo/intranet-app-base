@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Hwkdo\IntranetAppBase\Services\McpServerService;
+use Hwkdo\IntranetAppBase\Support\AiUsage;
 use Hwkdo\OpenwebuiApiLaravel\Services\OpenWebUiUserService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Auth;
@@ -50,6 +51,8 @@ new class extends Component
 
     public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true): void
     {
+        abort_unless(AiUsage::allowed(), 403);
+
         $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
         $this->apiKey = $apiKey;
         $this->baseUrl = $baseUrl ?? config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api');
