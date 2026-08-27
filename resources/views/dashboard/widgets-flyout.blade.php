@@ -16,13 +16,13 @@
 </flux:modal.trigger>
 
 <flux:modal :name="$modalName" variant="flyout" class="md:max-w-lg">
-    <div class="space-y-5">
+    <div class="space-y-5" data-tour="dashboard-widgets-panel">
         <div class="space-y-1">
             <flux:heading size="lg">Widgets</flux:heading>
             <flux:text class="text-zinc-500">{{ $descriptionText }}</flux:text>
         </div>
 
-        <div class="space-y-4">
+        <div class="space-y-4" data-tour="dashboard-widgets-list">
             @foreach($sections as $section)
                 <div class="space-y-2">
                     <flux:heading size="sm">{{ $section['label'] }}</flux:heading>
@@ -43,7 +43,7 @@
 
                                 <span class="shrink-0 flex items-center gap-2">
                                     @if($this->{$supportsItemCountMethod}($widget['key']))
-                                        <span class="w-24">
+                                        <span class="w-24" data-tour="dashboard-widget-item-count">
                                             <flux:input
                                                 type="number"
                                                 min="1"

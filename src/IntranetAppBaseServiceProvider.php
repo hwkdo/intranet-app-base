@@ -43,6 +43,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\IntranetNotificationGatewayInterface::class, \Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupCatalog::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupProgressStore::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourCatalog::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourProgressStore::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -80,6 +82,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
         Livewire::component('intranet-app-base::global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
         Livewire::component('intranet-app-base.global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
+        Livewire::component('intranet-app-base::tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
+        Livewire::component('intranet-app-base.tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
 
         Event::listen(NotificationSent::class, \Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification::class);
     }

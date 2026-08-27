@@ -40,4 +40,11 @@ return [
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SetupProviderInterface>>
      */
     'setup_providers' => [],
+
+    /**
+     * Host-Provider für Product Tours (z. B. Base-/Main-App-Touren).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\TourProviderInterface>>
+     */
+    'tour_providers' => [],
 ];
