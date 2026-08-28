@@ -61,6 +61,11 @@ $settingsStructure = computed(function () {
     
     foreach ($settings->toArray() as $key => $value) {
         $property = collect($properties)->first(fn ($p) => $p->getName() === $key);
+
+        if ($property && ! \Hwkdo\IntranetAppBase\Support\UserSettingsUi::isVisibleProperty($property)) {
+            continue;
+        }
+
         $propertyType = $property?->getType();
         
         // Beschreibung aus PHP Attributen abrufen
@@ -202,7 +207,12 @@ $getAppClass = function (string $packageName, array $packageData): ?string {
     <flux:text class="mb-6">
         Passen Sie Ihre persönlichen Einstellungen für diese App an.
     </flux:text>
-    
+
+    @if($this->settingsStructure === [])
+        <flux:callout variant="secondary" icon="information-circle">
+            <flux:callout.text>Für diese App gibt es hier keine weiteren persönlichen Einstellungen.</flux:callout.text>
+        </flux:callout>
+    @else
     <div class="space-y-4">
         @foreach($this->settingsStructure as $field)
             @if($field['type'] === 'switch')
@@ -270,10 +280,11 @@ $getAppClass = function (string $packageName, array $packageData): ?string {
             @endif
         @endforeach
     </div>
-    
+
     <div class="mt-6 flex justify-end">
         <flux:button wire:click="save" variant="primary">
             Einstellungen speichern
         </flux:button>
     </div>
+    @endif
 </flux:card>
