@@ -40,7 +40,10 @@
         "psr-4": {
             "Hwkdo\\IntranetAppBase\\": "src/",
             "Hwkdo\\IntranetAppBase\\Database\\Factories\\": "database/factories/"
-        }
+        },
+        "files": [
+            "src/Support/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

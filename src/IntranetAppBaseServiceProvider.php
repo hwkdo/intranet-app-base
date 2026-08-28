@@ -22,6 +22,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             ->name('intranet-app-base')
             ->hasConfigFile()
             ->hasViews()
+            ->hasRoutes('manuals')
             ->hasMigrations()
             ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncAppSettings::class)
             ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class)
@@ -30,6 +31,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
 
     public function bootingPackage()
     {
+        require_once __DIR__.'/Support/helpers.php';
+
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class, \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class);
@@ -45,6 +48,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupProgressStore::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourCatalog::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourProgressStore::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\ManualCatalog::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Support\ManualAssetResolver::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -84,14 +89,10 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
         Livewire::component('intranet-app-base::tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
         Livewire::component('intranet-app-base.tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
+        Livewire::component('intranet-app-base::manual-show', \Hwkdo\IntranetAppBase\Livewire\ManualShow::class);
+        Livewire::component('intranet-app-base.manual-show', \Hwkdo\IntranetAppBase\Livewire\ManualShow::class);
 
         Event::listen(NotificationSent::class, \Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification::class);
-    }
-
-    public function bootPackage()
-    {
-        // Load views with namespace
-        $this->loadViewsFrom(__DIR__.'/../resources/views', 'intranet-app-base');
     }
 
     public function boot()

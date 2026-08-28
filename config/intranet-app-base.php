@@ -47,4 +47,11 @@ return [
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\TourProviderInterface>>
      */
     'tour_providers' => [],
+
+    /**
+     * Host-Provider für Bedienungsanleitungen (z. B. Base-/Main-App-Manuals).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\ManualProviderInterface>>
+     */
+    'manual_providers' => [],
 ];
