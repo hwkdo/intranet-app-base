@@ -12,20 +12,28 @@ use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
 use Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use NotificationChannels\WebPush\PushSubscription;
 
 class NotificationSettings extends Component
 {
+    /** @var list<string> */
+    private const ALLOWED_TABS = ['apps', 'news', 'settings'];
+
     /** @var array<string, array{enabled: bool, channels: list<string>}> */
     public array $preferences = [];
 
+    #[Url(as: 'q', except: '', history: true)]
     public string $searchTerm = '';
 
+    #[Url(as: 'tab', except: 'apps', history: true)]
     public string $activeTab = 'apps';
 
     public function mount(NotificationTypeCatalog $catalog, NotificationPreferenceResolver $resolver): void
     {
+        $this->normalizeActiveTab();
+
         $user = Auth::user();
 
         if (! $user) {
@@ -38,6 +46,20 @@ class NotificationSettings extends Component
                 'enabled' => $resolved['enabled'],
                 'channels' => $resolved['channels'],
             ];
+        }
+    }
+
+    public function updatedActiveTab(string $value): void
+    {
+        if (! in_array($value, self::ALLOWED_TABS, true)) {
+            $this->activeTab = 'apps';
+        }
+    }
+
+    private function normalizeActiveTab(): void
+    {
+        if (! in_array($this->activeTab, self::ALLOWED_TABS, true)) {
+            $this->activeTab = 'apps';
         }
     }
 
