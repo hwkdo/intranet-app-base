@@ -258,13 +258,18 @@ test('getTaskCount returns zero for user without required role', function () {
     expect($service->getTaskCount($userWithWrongRole))->toBe(0);
 });
 
-test('user with app permission but without app role gets tasks', function () {
+test('user with app permission but without app role gets no tasks', function () {
     $service = makeTaskServiceForApp(TaskServiceTestApp::class);
 
     $user = makeUserWithPermission('see-app-test');
 
-    $tasks = $service->getTasksForUser($user);
+    expect($service->getTasksForUser($user))->toBeEmpty();
+});
 
-    expect($tasks)->toHaveCount(1)
-        ->and($tasks->first()->title)->toBe('Test-Aufgabe');
+test('super admin without app role gets no tasks', function () {
+    $service = makeTaskServiceForApp(TaskServiceTestApp::class);
+
+    $superAdmin = makeUserWithRole('Super Admin');
+
+    expect($service->getTasksForUser($superAdmin))->toBeEmpty();
 });
