@@ -38,7 +38,19 @@
                                 :href="$navItem['href']"
                                 wire:navigate
                             >
-                                {{ $navItem['label'] }}
+                                <span class="flex w-full min-w-0 items-center justify-between gap-2">
+                                    <span class="truncate">{{ $navItem['label'] }}</span>
+                                    @if(isset($navItem['badge']) && $navItem['badge'] !== null && $navItem['badge'] !== '')
+                                        <flux:badge
+                                            size="sm"
+                                            variant="solid"
+                                            :color="$navItem['badgeColor'] ?? 'red'"
+                                            class="shrink-0"
+                                        >
+                                            {{ $navItem['badge'] }}
+                                        </flux:badge>
+                                    @endif
+                                </span>
                             </flux:navlist.item>
                         @endif
                     @endif
