@@ -4,9 +4,10 @@
         data-tour-trigger
         data-tour-key="{{ $tourKey }}"
         data-steps-module="{{ $stepsModule }}"
+        data-tour-mandatory="{{ $mandatory ? '1' : '0' }}"
     @endif
 >
-    @if($showNudge && $tourTitle)
+    @if($showNudge && $tourTitle && ! $mandatory)
         <div class="fixed bottom-20 right-4 z-[9990] max-w-sm" wire:key="tour-nudge-{{ $tourKey }}">
             <flux:card class="glass-card p-4 shadow-lg">
                 <flux:callout variant="secondary" icon="map">
@@ -49,15 +50,24 @@
     window.__intranetTourTriggerWire = $wire;
 
     $wire.on('intranet-tour-start', (payload) => {
-        const detail = Array.isArray(payload) ? payload[0] : payload;
-        // Kurze Verzögerung, damit wire:navigate / Morph das Ziel-DOM bereitstellen kann
+        const detail = Array.isArray(payload) ? (payload[0] ?? {}) : (payload ?? {});
+        const tourKey = detail.tourKey ?? document.querySelector('[data-tour-trigger]')?.dataset?.tourKey;
+        const stepsModule = detail.stepsModule ?? document.querySelector('[data-tour-trigger]')?.dataset?.stepsModule;
+
+        if (! tourKey || ! stepsModule) {
+            console.error('[tours] intranet-tour-start missing tourKey or stepsModule', payload);
+
+            return;
+        }
+
         setTimeout(() => {
-            document.dispatchEvent(new CustomEvent('intranet-tour:start', {
-                detail: {
-                    tourKey: detail.tourKey,
-                    stepsModule: detail.stepsModule,
-                },
-            }));
+            window.IntranetTours?.start({
+                tourKey,
+                stepsModule,
+                mandatory: detail.mandatory === true || detail.mandatory === 1 || detail.mandatory === '1',
+            })?.catch?.((error) => {
+                console.error('[tours] start failed', error);
+            });
         }, 150);
     });
 

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Hwkdo\IntranetAppBase\Services;
 
 use Hwkdo\IntranetAppBase\Data\TourDefinition;
-use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Hwkdo\IntranetAppBase\Interfaces\IntranetAppInterface;
 use Hwkdo\IntranetAppBase\Interfaces\ProvidesToursInterface;
 use Hwkdo\IntranetAppBase\Interfaces\TourProviderInterface;
+use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -142,12 +142,31 @@ class TourCatalog
 
     public function forRoute(Authenticatable $user, ?string $routeName): ?TourDefinition
     {
+        return $this->forPage($user, $routeName, null);
+    }
+
+    public function forPage(Authenticatable $user, ?string $routeName, ?string $path = null): ?TourDefinition
+    {
+        $eligible = $this->forUser($user);
+        $normalizedPath = TourDefinition::normalizePath($path);
+
+        if ($normalizedPath !== '') {
+            $pathMatch = $eligible
+                ->filter(fn (TourDefinition $definition): bool => $definition->matchesPath($normalizedPath))
+                ->sortByDesc(fn (TourDefinition $definition): int => strlen(TourDefinition::normalizePath($definition->routePath ?? '')))
+                ->first();
+
+            if ($pathMatch !== null) {
+                return $pathMatch;
+            }
+        }
+
         if ($routeName === null || $routeName === '') {
             return null;
         }
 
-        return $this->forUser($user)
-            ->first(fn (TourDefinition $definition): bool => $definition->matchesRoute($routeName));
+        return $eligible
+            ->first(fn (TourDefinition $definition): bool => $definition->routePath === null && $definition->matchesRoute($routeName));
     }
 
     /**

@@ -30,6 +30,20 @@ class TourProgressStore
         return $record?->status ?? TourStatus::Pending;
     }
 
+    public function isCompleted(Authenticatable $user, string $tourKey): bool
+    {
+        return $this->effectiveStatus($user, $tourKey) === TourStatus::Completed;
+    }
+
+    /**
+     * Soft-Mandatory: Tour muss einmal completed sein.
+     * Version-Bumps erzwingen keine erneute Pflicht.
+     */
+    public function requiresMandatoryCompletion(Authenticatable $user, TourDefinition $definition): bool
+    {
+        return $definition->mandatory && ! $this->isCompleted($user, $definition->key);
+    }
+
     public function markCompleted(Authenticatable $user, TourDefinition $definition): IntranetUserTourCompletion
     {
         return $this->upsert($user, $definition->key, [

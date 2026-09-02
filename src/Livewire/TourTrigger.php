@@ -21,25 +21,35 @@ class TourTrigger extends Component
 
     public ?string $stepsModule = null;
 
+    public bool $mandatory = false;
+
     public bool $showButton = false;
 
     public bool $showNudge = false;
 
     public function mount(TourCatalog $catalog, TourProgressStore $store): void
     {
-        $this->resolveForRoute(
+        $this->resolveForPage(
             $catalog,
             $store,
             request()->route()?->getName(),
+            request()->path(),
         );
     }
 
     public function refreshForRoute(?string $path = null): void
     {
-        $this->resolveForRoute(
+        $resolvedPath = $path ?? request()->path();
+
+        if (str_starts_with($resolvedPath, '/')) {
+            $resolvedPath = TourDefinition::normalizePath($resolvedPath);
+        }
+
+        $this->resolveForPage(
             app(TourCatalog::class),
             app(TourProgressStore::class),
-            $this->resolveRouteName($path),
+            $this->resolveRouteName($resolvedPath !== '' ? '/'.$resolvedPath : null),
+            $resolvedPath,
         );
     }
 
@@ -49,13 +59,53 @@ class TourTrigger extends Component
             return;
         }
 
+        $this->prepareTourStart();
+
+        $this->js($this->startTourJavaScript($this->tourKey, $this->stepsModule, $this->mandatory));
+    }
+
+    public function prepareTourStart(): void
+    {
+        if ($this->tourKey === null) {
+            return;
+        }
+
         $this->showNudge = false;
         session()->put('tour_nudge:'.$this->tourKey, true);
+    }
 
-        $this->dispatch(
-            'intranet-tour-start',
-            tourKey: $this->tourKey,
-            stepsModule: $this->stepsModule,
+    private function startTourJavaScript(string $tourKey, string $stepsModule, bool $mandatory = false): string
+    {
+        return sprintf(
+            <<<'JS'
+            (() => {
+                if (! window.IntranetTours?.start) {
+                    console.error('[tours] IntranetTours.start is not available');
+                    window.Flux?.toast?.({
+                        heading: 'Tour',
+                        text: 'Tour-Modul nicht geladen. Bitte Seite neu laden (Strg+Shift+R).',
+                        variant: 'danger',
+                    });
+                    return;
+                }
+
+                window.IntranetTours.start({
+                    tourKey: %s,
+                    stepsModule: %s,
+                    mandatory: %s,
+                }).catch((error) => {
+                    console.error('[tours] start failed', error);
+                    window.Flux?.toast?.({
+                        heading: 'Tour',
+                        text: 'Die Tour konnte nicht gestartet werden.',
+                        variant: 'danger',
+                    });
+                });
+            })();
+            JS,
+            json_encode($tourKey, JSON_THROW_ON_ERROR),
+            json_encode($stepsModule, JSON_THROW_ON_ERROR),
+            $mandatory ? 'true' : 'false',
         );
     }
 
@@ -64,6 +114,15 @@ class TourTrigger extends Component
         $definition = $this->currentDefinition();
 
         if ($definition === null) {
+            return;
+        }
+
+        if ($definition->mandatory) {
+            Flux::toast(
+                text: 'Diese Tour ist verpflichtend und kann nicht verschoben werden.',
+                variant: 'warning',
+            );
+
             return;
         }
 
@@ -85,6 +144,15 @@ class TourTrigger extends Component
             return;
         }
 
+        if ($definition->mandatory) {
+            Flux::toast(
+                text: 'Diese Tour ist verpflichtend und kann nicht übersprungen werden.',
+                variant: 'warning',
+            );
+
+            return;
+        }
+
         app(TourProgressStore::class)->markDismissed(Auth::user(), $definition);
         $this->showNudge = false;
         session()->put('tour_nudge:'.$definition->key, true);
@@ -97,7 +165,7 @@ class TourTrigger extends Component
 
     public function dismissNudgeOnly(): void
     {
-        if ($this->tourKey === null) {
+        if ($this->tourKey === null || $this->mandatory) {
             return;
         }
 
@@ -105,10 +173,11 @@ class TourTrigger extends Component
         session()->put('tour_nudge:'.$this->tourKey, true);
     }
 
-    private function resolveForRoute(
+    private function resolveForPage(
         TourCatalog $catalog,
         TourProgressStore $store,
         ?string $routeName,
+        ?string $path,
     ): void {
         $user = Auth::user();
 
@@ -118,7 +187,7 @@ class TourTrigger extends Component
             return;
         }
 
-        $definition = $catalog->forRoute($user, $routeName);
+        $definition = $catalog->forPage($user, $routeName, $path);
 
         if ($definition === null) {
             $this->resetTourState();
@@ -129,18 +198,25 @@ class TourTrigger extends Component
         $this->tourKey = $definition->key;
         $this->tourTitle = $definition->title;
         $this->stepsModule = $definition->stepsModule;
+        $this->mandatory = $definition->mandatory;
         $this->showButton = true;
+        $this->showNudge = false;
 
         $pendingStart = session()->pull('intranet_start_tour');
 
         if ($pendingStart === $definition->key) {
-            $this->showNudge = false;
-            $this->dispatch(
-                'intranet-tour-start',
-                tourKey: $definition->key,
-                stepsModule: $definition->stepsModule,
-            );
+            $this->js($this->startTourJavaScript($definition->key, $definition->stepsModule, $definition->mandatory));
 
+            return;
+        }
+
+        if ($store->requiresMandatoryCompletion($user, $definition)) {
+            $this->js($this->startTourJavaScript($definition->key, $definition->stepsModule, true));
+
+            return;
+        }
+
+        if ($definition->mandatory) {
             return;
         }
 
@@ -183,6 +259,7 @@ class TourTrigger extends Component
         $this->tourKey = null;
         $this->tourTitle = null;
         $this->stepsModule = null;
+        $this->mandatory = false;
         $this->showButton = false;
         $this->showNudge = false;
     }

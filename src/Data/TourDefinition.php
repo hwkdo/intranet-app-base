@@ -20,6 +20,8 @@ class TourDefinition
         public readonly int $sort = 0,
         public readonly int $version = 1,
         public readonly ?string $permission = null,
+        public readonly ?string $routePath = null,
+        public readonly bool $mandatory = false,
     ) {}
 
     public function isEligible(Authenticatable $user): bool
@@ -42,5 +44,48 @@ class TourDefinition
         }
 
         return $this->routeName === $routeName;
+    }
+
+    public function matchesPath(?string $path): bool
+    {
+        if ($this->routePath === null || $this->routePath === '') {
+            return false;
+        }
+
+        return self::normalizePath($this->routePath) === self::normalizePath($path);
+    }
+
+    public function matchesPage(?string $routeName, ?string $path): bool
+    {
+        if ($this->routePath !== null && $this->routePath !== '') {
+            return $this->matchesPath($path);
+        }
+
+        return $this->matchesRoute($routeName);
+    }
+
+    public function startUrl(): string
+    {
+        if ($this->routePath !== null && $this->routePath !== '') {
+            return url('/'.self::normalizePath($this->routePath));
+        }
+
+        return route($this->routeName);
+    }
+
+    public static function normalizePath(?string $path): string
+    {
+        if ($path === null || $path === '') {
+            return '';
+        }
+
+        $path = trim($path);
+        $parsed = parse_url($path, PHP_URL_PATH);
+
+        if (is_string($parsed) && $parsed !== '') {
+            $path = $parsed;
+        }
+
+        return trim($path, '/');
     }
 }
