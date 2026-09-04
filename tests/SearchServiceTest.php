@@ -107,6 +107,150 @@ class SearchServiceHostSource implements SearchSourceInterface
     }
 }
 
+class SearchServiceBusyHostSource implements SearchSourceInterface
+{
+    public function key(): string
+    {
+        return 'intranet.busy';
+    }
+
+    public function label(): string
+    {
+        return 'Busy Host';
+    }
+
+    public function appIdentifier(): string
+    {
+        return 'intranet';
+    }
+
+    public function appName(): string
+    {
+        return 'Intranet';
+    }
+
+    public function icon(): string
+    {
+        return 'home';
+    }
+
+    public function isAvailableFor(Authenticatable $user): bool
+    {
+        return true;
+    }
+
+    public function search(string $query, Authenticatable $user, int $limit): Collection
+    {
+        return collect(range(1, 10))
+            ->map(fn (int $i): SearchResult => new SearchResult(
+                title: "Host {$i} {$query}",
+                url: "https://example.com/host/{$i}",
+                appIdentifier: $this->appIdentifier(),
+                appName: $this->appName(),
+                icon: $this->icon(),
+                sourceKey: $this->key(),
+            ))
+            ->take($limit)
+            ->values();
+    }
+}
+
+class SearchServiceBusyAppSource implements SearchSourceInterface
+{
+    public function key(): string
+    {
+        return 'test-app.busy';
+    }
+
+    public function label(): string
+    {
+        return 'Busy App';
+    }
+
+    public function appIdentifier(): string
+    {
+        return 'test-app';
+    }
+
+    public function appName(): string
+    {
+        return 'Test App';
+    }
+
+    public function icon(): string
+    {
+        return 'cube';
+    }
+
+    public function isAvailableFor(Authenticatable $user): bool
+    {
+        return method_exists($user, 'can') && $user->can('see-app-test-app');
+    }
+
+    public function search(string $query, Authenticatable $user, int $limit): Collection
+    {
+        return collect(range(1, 10))
+            ->map(fn (int $i): SearchResult => new SearchResult(
+                title: "App {$i} {$query}",
+                url: "https://example.com/app/{$i}",
+                appIdentifier: $this->appIdentifier(),
+                appName: $this->appName(),
+                icon: $this->icon(),
+                sourceKey: $this->key(),
+            ))
+            ->take($limit)
+            ->values();
+    }
+}
+
+class SearchServiceBusyTestApp implements IntranetAppInterface, ProvidesSearchInterface
+{
+    public static function roles_user(): Collection
+    {
+        return collect(['name' => 'Test-Benutzer', 'permissions' => ['see-app-test-app']]);
+    }
+
+    public static function roles_admin(): Collection
+    {
+        return collect(['name' => 'Test-Admin', 'permissions' => ['see-app-test-app']]);
+    }
+
+    public static function identifier(): string
+    {
+        return 'test-app';
+    }
+
+    public static function app_name(): string
+    {
+        return 'Test App';
+    }
+
+    public static function app_icon(): string
+    {
+        return 'cog';
+    }
+
+    public static function userSettingsClass(): ?string
+    {
+        return null;
+    }
+
+    public static function appSettingsClass(): ?string
+    {
+        return null;
+    }
+
+    public static function mcpServers(): array
+    {
+        return [];
+    }
+
+    public static function searchSources(): array
+    {
+        return [SearchServiceBusyAppSource::class];
+    }
+}
+
 class SearchServiceTestApp implements IntranetAppInterface, ProvidesSearchInterface
 {
     public static function roles_user(): Collection
@@ -325,4 +469,25 @@ test('preview search respects configured preview limit', function (): void {
 
     expect($response->results)->toHaveCount(1)
         ->and($response->totalCount)->toBe(2);
+});
+
+test('search diversifies results across sources within the limit', function (): void {
+    app()->instance(SearchServiceBusyHostSource::class, new SearchServiceBusyHostSource);
+    app()->instance(SearchServiceBusyAppSource::class, new SearchServiceBusyAppSource);
+
+    $service = new SearchService(
+        settingsSource: new DefaultGlobalSearchSettingsSource,
+        packagesResolver: fn () => ['test/intranet-app-test' => []],
+        appClassResolver: fn () => SearchServiceBusyTestApp::class,
+        hostSourcesResolver: fn () => [SearchServiceBusyHostSource::class],
+    );
+
+    $response = $service->search(makeSearchUserWithPermission('see-app-test-app'), 'delta', 4);
+
+    expect($response->totalCount)->toBe(20)
+        ->and($response->results)->toHaveCount(4)
+        ->and($response->results->pluck('sourceKey')->unique()->sort()->values()->all())
+        ->toBe(['intranet.busy', 'test-app.busy'])
+        ->and($response->results->where('sourceKey', 'intranet.busy'))->toHaveCount(2)
+        ->and($response->results->where('sourceKey', 'test-app.busy'))->toHaveCount(2);
 });

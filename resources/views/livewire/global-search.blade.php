@@ -24,7 +24,7 @@
 
                 <div wire:loading.remove wire:target="searchQuery" class="space-y-3">
                     @forelse ($this->previewResponse->groupedResults as $appIdentifier => $results)
-                        <div class="space-y-1">
+                        <div class="space-y-1" wire:key="preview-group-{{ $appIdentifier }}">
                             <flux:text class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                                 {{ $results->first()->appName }}
                             </flux:text>
@@ -34,6 +34,7 @@
                                     href="{{ $result->url }}"
                                     @if ($result->download) download @else wire:navigate @endif
                                     class="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                    wire:key="preview-result-{{ $result->sourceKey }}-{{ $result->url }}"
                                 >
                                     <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
                                     <div class="min-w-0">
@@ -69,54 +70,68 @@
         </flux:popover>
     </flux:dropdown>
 
-    <flux:modal wire:model="showModal" variant="bare" class="w-full max-w-[30rem] my-[12vh] max-h-screen overflow-y-hidden">
-        <flux:command class="inline-flex max-h-[76vh] flex-col border-none shadow-lg">
-            <flux:command.input
-                placeholder="Suchen…"
-                closable
-                wire:model.live.debounce.300ms="searchQuery"
-            />
+    <flux:modal wire:model.self="showModal" class="md:max-w-lg space-y-4">
+        <div class="space-y-1">
+            <flux:heading size="lg">Suche</flux:heading>
+            <flux:text class="text-sm text-zinc-500">
+                Treffer aus Apps, Dokumenten und dem Intranet.
+            </flux:text>
+        </div>
 
-            <flux:command.items>
-                @if (strlen(trim($searchQuery)) >= $this->minChars)
-                    @forelse ($this->modalResponse->results as $result)
-                        @if ($result->download)
+        <flux:input
+            wire:model.live.debounce.300ms="searchQuery"
+            placeholder="Suchen…"
+            icon="magnifying-glass"
+            autofocus
+        />
+
+        @if (strlen(trim($searchQuery)) > 0 && strlen(trim($searchQuery)) < $this->minChars)
+            <flux:text class="text-sm text-zinc-500">
+                Mindestens {{ $this->minChars }} Zeichen eingeben.
+            </flux:text>
+        @elseif (strlen(trim($searchQuery)) >= $this->minChars)
+            <div wire:loading wire:target="searchQuery" class="space-y-2 py-2">
+                <flux:skeleton class="h-10 w-full" />
+                <flux:skeleton class="h-10 w-full" />
+                <flux:skeleton class="h-10 w-full" />
+            </div>
+
+            <div
+                wire:loading.remove
+                wire:target="searchQuery"
+                class="max-h-[60vh] space-y-4 overflow-y-auto pe-1"
+            >
+                @forelse ($this->modalResponse->groupedResults as $appIdentifier => $results)
+                    <div class="space-y-1" wire:key="modal-group-{{ $appIdentifier }}">
+                        <flux:text class="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                            {{ $results->first()->appName }}
+                            <span class="font-normal normal-case tracking-normal text-zinc-400">({{ $results->count() }})</span>
+                        </flux:text>
+
+                        @foreach ($results as $result)
                             <a
                                 href="{{ $result->url }}"
-                                download
-                                class="flex items-start gap-3 px-3 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                @if ($result->download) download @else wire:navigate @endif
+                                class="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                wire:key="modal-result-{{ $result->sourceKey }}-{{ $result->url }}"
+                                wire:click="closeModal"
                             >
                                 <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
                                 <div class="min-w-0">
-                                    <div class="truncate">{{ $result->title }}</div>
+                                    <div class="truncate text-sm font-medium">{{ $result->title }}</div>
                                     @if ($result->subtitle)
                                         <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
                                     @endif
                                 </div>
                             </a>
-                        @else
-                            <flux:command.item
-                                :href="$result->url"
-                                wire:navigate
-                                :icon="$result->icon"
-                            >
-                                <div class="min-w-0">
-                                    <div class="truncate">{{ $result->title }}</div>
-                                    @if ($result->subtitle)
-                                        <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
-                                    @endif
-                                </div>
-                            </flux:command.item>
-                        @endif
-                    @empty
-                        <div class="px-3 py-4 text-sm text-zinc-500">Keine Treffer gefunden.</div>
-                    @endforelse
-                @else
-                    <div class="px-3 py-4 text-sm text-zinc-500">
-                        Mindestens {{ $this->minChars }} Zeichen eingeben.
+                        @endforeach
                     </div>
-                @endif
-            </flux:command.items>
-        </flux:command>
+                @empty
+                    <flux:callout variant="info" class="text-sm">
+                        Keine Treffer gefunden.
+                    </flux:callout>
+                @endforelse
+            </div>
+        @endif
     </flux:modal>
 </div>

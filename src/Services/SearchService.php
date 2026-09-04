@@ -78,7 +78,7 @@ class SearchService
 
         $sorted = $this->sortResults($merged);
         $totalCount = $sorted->count();
-        $results = $sorted->take($limit)->values();
+        $results = $this->diversifyResults($sorted, $limit);
 
         return new SearchResponse(
             results: $results,
@@ -165,6 +165,49 @@ class SearchService
         return $results
             ->sortByDesc(fn (SearchResult $result): float => $result->score ?? 0.0)
             ->values();
+    }
+
+    /**
+     * Round-robin across sources so one noisy source (e.g. users) cannot fill the entire limit.
+     *
+     * @param  Collection<int, SearchResult>  $results
+     * @return Collection<int, SearchResult>
+     */
+    private function diversifyResults(Collection $results, int $limit): Collection
+    {
+        if ($results->count() <= $limit) {
+            return $results->values();
+        }
+
+        /** @var Collection<string, Collection<int, SearchResult>> $bySource */
+        $bySource = $results
+            ->groupBy(fn (SearchResult $result): string => $result->sourceKey ?? $result->appIdentifier)
+            ->map(fn (Collection $group): Collection => $group->values());
+
+        $diversified = collect();
+
+        while ($diversified->count() < $limit) {
+            $added = false;
+
+            foreach ($bySource as $key => $group) {
+                if ($group->isEmpty()) {
+                    continue;
+                }
+
+                $diversified->push($group->shift());
+                $added = true;
+
+                if ($diversified->count() >= $limit) {
+                    break;
+                }
+            }
+
+            if (! $added) {
+                break;
+            }
+        }
+
+        return $diversified->values();
     }
 
     /**

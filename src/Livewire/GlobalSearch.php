@@ -16,11 +16,6 @@ class GlobalSearch extends Component
 
     public bool $showModal = false;
 
-    public function updatedSearchQuery(): void
-    {
-        $this->showModal = false;
-    }
-
     public function openModal(): void
     {
         $this->showModal = true;
