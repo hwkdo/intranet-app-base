@@ -92,6 +92,21 @@ test('search action definition marks download results for file links', function 
         ->and($result->title)->toBe('Liste exportieren');
 });
 
+test('search action definition builds urls with route and query parameters', function (): void {
+    $withQuery = new SearchActionDefinition(
+        key: 'demo.form',
+        title: 'Formular',
+        keywords: ['formular'],
+        routeName: 'home',
+        appIdentifier: 'demo',
+        appName: 'Demo',
+        icon: 'magnifying-glass',
+        queryParameters: ['type' => 'demo'],
+    );
+
+    expect($withQuery->url())->toBe(route('home').'?type=demo');
+});
+
 test('search action catalog filters host actions by permission', function (): void {
     app()->instance(SearchActionCatalogTestHostProvider::class, new SearchActionCatalogTestHostProvider);
 

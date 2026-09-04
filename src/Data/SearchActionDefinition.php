@@ -11,6 +11,9 @@ class SearchActionDefinition
 {
     /**
      * @param  list<string>  $keywords
+     * @param  array<string, mixed>  $routeParameters
+     * @param  array<string, mixed>  $queryParameters
+     * @param  list<string>  $anyOfPermissions  If non-empty, eligible when the user can any of these (instead of $permission).
      */
     public function __construct(
         public readonly string $key,
@@ -24,10 +27,27 @@ class SearchActionDefinition
         public readonly ?string $subtitle = null,
         public readonly int $sort = 100,
         public readonly bool $download = false,
+        public readonly array $routeParameters = [],
+        public readonly array $queryParameters = [],
+        public readonly array $anyOfPermissions = [],
     ) {}
 
     public function isEligible(Authenticatable $user): bool
     {
+        if ($this->anyOfPermissions !== []) {
+            if (! method_exists($user, 'can')) {
+                return false;
+            }
+
+            foreach ($this->anyOfPermissions as $permission) {
+                if ($user->can($permission)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         if ($this->permission === null) {
             return true;
         }
@@ -41,7 +61,15 @@ class SearchActionDefinition
 
     public function url(): string
     {
-        return route($this->routeName);
+        $url = route($this->routeName, $this->routeParameters);
+
+        if ($this->queryParameters === []) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.http_build_query($this->queryParameters);
     }
 
     /**
