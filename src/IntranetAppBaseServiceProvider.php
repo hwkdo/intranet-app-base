@@ -35,8 +35,23 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class, \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class);
+
+        if (! $this->app->bound(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class)) {
+            $this->app->singleton(
+                \Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class,
+                \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class,
+            );
+        }
+
+        if (! $this->app->bound(\Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface::class)) {
+            $this->app->singleton(
+                \Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface::class,
+                \Hwkdo\IntranetAppBase\Support\DefaultUserSearchPreferencesSource::class,
+            );
+        }
+
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchFavoriteStore::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchActionCatalog::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
@@ -88,6 +103,8 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
         Livewire::component('intranet-app-base::global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
         Livewire::component('intranet-app-base.global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
+        Livewire::component('intranet-app-base::search-favorites-dropdown', \Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown::class);
+        Livewire::component('intranet-app-base.search-favorites-dropdown', \Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown::class);
         Livewire::component('intranet-app-base::tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
         Livewire::component('intranet-app-base.tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
         Livewire::component('intranet-app-base::manual-show', \Hwkdo\IntranetAppBase\Livewire\ManualShow::class);

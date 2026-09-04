@@ -53,10 +53,16 @@ class SearchServiceTestSource implements SearchSourceInterface
                 appIdentifier: $this->appIdentifier(),
                 appName: $this->appName(),
                 icon: $this->icon(),
+                favoriteKey: $this->key().':1',
                 subtitle: 'Untertitel',
                 sourceKey: $this->key(),
             ),
         ])->take($limit);
+    }
+
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        return null;
     }
 }
 
@@ -101,9 +107,15 @@ class SearchServiceHostSource implements SearchSourceInterface
                 appIdentifier: $this->appIdentifier(),
                 appName: $this->appName(),
                 icon: $this->icon(),
+                favoriteKey: $this->key().':host',
                 sourceKey: $this->key(),
             ),
         ])->take($limit);
+    }
+
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        return null;
     }
 }
 
@@ -148,10 +160,16 @@ class SearchServiceBusyHostSource implements SearchSourceInterface
                 appIdentifier: $this->appIdentifier(),
                 appName: $this->appName(),
                 icon: $this->icon(),
+                favoriteKey: $this->key().':'.$i,
                 sourceKey: $this->key(),
             ))
             ->take($limit)
             ->values();
+    }
+
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        return null;
     }
 }
 
@@ -196,10 +214,16 @@ class SearchServiceBusyAppSource implements SearchSourceInterface
                 appIdentifier: $this->appIdentifier(),
                 appName: $this->appName(),
                 icon: $this->icon(),
+                favoriteKey: $this->key().':'.$i,
                 sourceKey: $this->key(),
             ))
             ->take($limit)
             ->values();
+    }
+
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        return null;
     }
 }
 

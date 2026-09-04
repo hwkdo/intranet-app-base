@@ -132,6 +132,7 @@ class SearchActionDefinition
             appIdentifier: $this->appIdentifier,
             appName: $this->appName,
             icon: $this->icon,
+            favoriteKey: 'intranet.actions:'.$this->key,
             subtitle: $this->subtitle ?? $this->appName,
             sourceKey: 'intranet.actions',
             score: $score,

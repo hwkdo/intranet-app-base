@@ -65,16 +65,7 @@ class HilfeSearchSource implements SearchSourceInterface
                     return null;
                 }
 
-                return new SearchResult(
-                    title: $candidate['title'],
-                    url: $candidate['url'],
-                    appIdentifier: $this->appIdentifier(),
-                    appName: $this->appName(),
-                    icon: $candidate['icon'],
-                    subtitle: $candidate['subtitle'],
-                    sourceKey: $this->key(),
-                    score: $score,
-                );
+                return $this->toResult($candidate, $score);
             })
             ->filter()
             ->sortByDesc(fn (SearchResult $result): float => $result->score ?? 0.0)
@@ -82,8 +73,38 @@ class HilfeSearchSource implements SearchSourceInterface
             ->values();
     }
 
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        $candidate = $this->candidates($user)
+            ->first(fn (array $item): bool => $item['entityId'] === $entityId);
+
+        if ($candidate === null) {
+            return null;
+        }
+
+        return $this->toResult($candidate);
+    }
+
     /**
-     * @return Collection<int, array{title: string, url: string, subtitle: string, icon: string, haystack: list<string>}>
+     * @param  array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>}  $candidate
+     */
+    private function toResult(array $candidate, ?float $score = null): SearchResult
+    {
+        return new SearchResult(
+            title: $candidate['title'],
+            url: $candidate['url'],
+            appIdentifier: $this->appIdentifier(),
+            appName: $this->appName(),
+            icon: $candidate['icon'],
+            favoriteKey: $this->key().':'.$candidate['entityId'],
+            subtitle: $candidate['subtitle'],
+            sourceKey: $this->key(),
+            score: $score,
+        );
+    }
+
+    /**
+     * @return Collection<int, array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>}>
      */
     private function candidates(Authenticatable $user): Collection
     {
@@ -96,6 +117,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => route('hilfe.setup.show', $definition->key),
                 'subtitle' => 'Einrichtung · '.$definition->appName,
                 'icon' => 'wrench-screwdriver',
+                'entityId' => 'setup:'.$definition->key,
                 'haystack' => [
                     $definition->title,
                     $definition->description,
@@ -112,6 +134,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => $this->tourUrl($definition),
                 'subtitle' => 'Tour · '.$definition->appName,
                 'icon' => 'map',
+                'entityId' => 'tour:'.$definition->key,
                 'haystack' => [
                     $definition->title,
                     $definition->description,
@@ -128,6 +151,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => $this->manualUrl($definition),
                 'subtitle' => 'Anleitung · '.$definition->appName,
                 'icon' => 'book-open',
+                'entityId' => 'manual:'.$definition->key,
                 'haystack' => [
                     $definition->title,
                     $definition->description,
@@ -141,7 +165,7 @@ class HilfeSearchSource implements SearchSourceInterface
     }
 
     /**
-     * @return list<array{title: string, url: string, subtitle: string, icon: string, haystack: list<string>}>
+     * @return list<array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>}>
      */
     private function hubShortcuts(): array
     {
@@ -151,6 +175,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => route('hilfe.index'),
                 'subtitle' => 'Hilfe',
                 'icon' => 'question-mark-circle',
+                'entityId' => 'hub:index',
                 'haystack' => ['Hilfe', 'Hilfe-Übersicht', 'Help', 'Übersicht'],
             ],
             [
@@ -158,6 +183,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => route('hilfe.setup'),
                 'subtitle' => 'Hilfe',
                 'icon' => 'wrench-screwdriver',
+                'entityId' => 'hub:setup',
                 'haystack' => ['Einrichtung', 'Setup', 'Ersteinrichtung', 'Wizard'],
             ],
             [
@@ -165,6 +191,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => route('hilfe.tours'),
                 'subtitle' => 'Hilfe',
                 'icon' => 'map',
+                'entityId' => 'hub:tours',
                 'haystack' => ['Touren', 'Tour', 'Product Tours', 'Geführte Tour'],
             ],
             [
@@ -172,6 +199,7 @@ class HilfeSearchSource implements SearchSourceInterface
                 'url' => route('hilfe.manuals'),
                 'subtitle' => 'Hilfe',
                 'icon' => 'book-open',
+                'entityId' => 'hub:manuals',
                 'haystack' => ['Anleitungen', 'Anleitung', 'Bedienungsanleitung', 'Manual', 'Handbuch'],
             ],
         ];

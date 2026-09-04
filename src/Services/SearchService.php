@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hwkdo\IntranetAppBase\Services;
 
 use Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface;
+use Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface;
 use Hwkdo\IntranetAppBase\Data\SearchResponse;
 use Hwkdo\IntranetAppBase\Data\SearchResult;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
@@ -28,8 +29,8 @@ class SearchService
         private readonly ?\Closure $packagesResolver = null,
         private readonly ?\Closure $appClassResolver = null,
         private readonly ?\Closure $hostSourcesResolver = null,
+        private readonly ?UserSearchPreferencesSourceInterface $userPreferences = null,
     ) {}
-
     public function minChars(): int
     {
         return max(1, $this->settingsSource->minChars());
@@ -47,7 +48,12 @@ class SearchService
 
     public function searchPreview(Authenticatable $user, string $query): SearchResponse
     {
-        return $this->search($user, $query, $this->previewLimit());
+        return $this->search(
+            $user,
+            $query,
+            $this->previewLimit(),
+            $this->userPreferencesSource()->previewResultsPerSource($user),
+        );
     }
 
     public function searchModal(Authenticatable $user, string $query): SearchResponse
@@ -55,8 +61,12 @@ class SearchService
         return $this->search($user, $query, $this->modalLimit());
     }
 
-    public function search(Authenticatable $user, string $query, int $limit): SearchResponse
-    {
+    public function search(
+        Authenticatable $user,
+        string $query,
+        int $limit,
+        ?int $maxPerSource = null,
+    ): SearchResponse {
         $query = trim($query);
 
         if ($query === '' || Str::length($query) < $this->minChars()) {
@@ -78,7 +88,7 @@ class SearchService
 
         $sorted = $this->sortResults($merged);
         $totalCount = $sorted->count();
-        $results = $this->diversifyResults($sorted, $limit);
+        $results = $this->diversifyResults($sorted, $limit, $maxPerSource);
 
         return new SearchResponse(
             results: $results,
@@ -173,16 +183,28 @@ class SearchService
      * @param  Collection<int, SearchResult>  $results
      * @return Collection<int, SearchResult>
      */
-    private function diversifyResults(Collection $results, int $limit): Collection
+    private function diversifyResults(Collection $results, int $limit, ?int $maxPerSource = null): Collection
     {
-        if ($results->count() <= $limit) {
+        if ($results->count() <= $limit && $maxPerSource === null) {
             return $results->values();
         }
 
         /** @var Collection<string, Collection<int, SearchResult>> $bySource */
         $bySource = $results
             ->groupBy(fn (SearchResult $result): string => $result->sourceKey ?? $result->appIdentifier)
-            ->map(fn (Collection $group): Collection => $group->values());
+            ->map(function (Collection $group) use ($maxPerSource): Collection {
+                $values = $group->values();
+
+                if ($maxPerSource !== null && $maxPerSource > 0) {
+                    return $values->take($maxPerSource)->values();
+                }
+
+                return $values;
+            });
+
+        if ($bySource->sum(fn (Collection $group): int => $group->count()) <= $limit) {
+            return $bySource->flatten(1)->values();
+        }
 
         $diversified = collect();
 
@@ -208,6 +230,11 @@ class SearchService
         }
 
         return $diversified->values();
+    }
+
+    private function userPreferencesSource(): UserSearchPreferencesSourceInterface
+    {
+        return $this->userPreferences ?? app(UserSearchPreferencesSourceInterface::class);
     }
 
     /**

@@ -65,4 +65,17 @@ class ActionsSearchSource implements SearchSourceInterface
             ->take($limit)
             ->values();
     }
+
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult
+    {
+        $definition = $this->catalog
+            ->forUser($user)
+            ->first(fn ($item): bool => $item->key === $entityId);
+
+        if ($definition === null) {
+            return null;
+        }
+
+        return $definition->toSearchResult();
+    }
 }

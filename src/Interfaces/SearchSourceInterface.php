@@ -26,4 +26,10 @@ interface SearchSourceInterface
      * @return Collection<int, SearchResult>
      */
     public function search(string $query, Authenticatable $user, int $limit): Collection;
+
+    /**
+     * Re-resolve a favorited entity for the current user.
+     * Return null when the item no longer exists or the user may not see it.
+     */
+    public function resolveFavorite(string $entityId, Authenticatable $user): ?SearchResult;
 }

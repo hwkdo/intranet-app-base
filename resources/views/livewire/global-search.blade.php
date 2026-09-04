@@ -1,3 +1,7 @@
+@php
+    $favoritedKeys = $this->favoritedKeys;
+@endphp
+
 <div
     class="relative w-full"
     x-data="{
@@ -47,6 +51,7 @@
         placeholder="Suche…"
         icon="magnifying-glass"
         kbd="⌘K"
+        clearable
         class="w-full bg-white/95 shadow-sm dark:bg-zinc-800/95"
         aria-label="{{ __('Search') }}"
     />
@@ -79,21 +84,12 @@
                                 </flux:text>
 
                                 @foreach ($results as $result)
-                                    <a
-                                        href="{{ $result->url }}"
-                                        @if ($result->download) download @else wire:navigate @endif
-                                        class="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                                        wire:key="preview-result-{{ $result->sourceKey }}-{{ $result->url }}"
-                                        @click="hidePanel()"
-                                    >
-                                        <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
-                                        <div class="min-w-0">
-                                            <div class="truncate text-sm font-medium text-zinc-900 dark:text-white">{{ $result->title }}</div>
-                                            @if ($result->subtitle)
-                                                <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
-                                            @endif
-                                        </div>
-                                    </a>
+                                    @include('intranet-app-base::livewire.partials.search-result-row', [
+                                        'result' => $result,
+                                        'favorited' => in_array($result->favoriteKey, $favoritedKeys, true),
+                                        'wireKey' => 'preview-result-'.$result->favoriteKey,
+                                        'rowClick' => 'hidePanel()',
+                                    ])
                                 @endforeach
                             </div>
                         @empty
@@ -114,9 +110,17 @@
                         @endif
                     </div>
                 @else
-                    <flux:text class="text-sm text-zinc-500">
-                        Apps, Dokumente und Benutzer durchsuchen.
-                    </flux:text>
+                    @if ($this->showFavoritesInEmptySearch)
+                        @include('intranet-app-base::livewire.partials.search-favorites-list', [
+                            'favorites' => $this->favorites,
+                            'onNavigate' => 'hidePanel()',
+                            'wireKeyPrefix' => 'empty-favorite',
+                        ])
+                    @else
+                        <flux:text class="text-sm text-zinc-500">
+                            Apps, Dokumente und Benutzer durchsuchen.
+                        </flux:text>
+                    @endif
                 @endif
             </div>
         </div>
@@ -134,6 +138,7 @@
             wire:model.live.debounce.300ms="searchQuery"
             placeholder="Suche…"
             icon="magnifying-glass"
+            clearable
             autofocus
         />
 
@@ -161,21 +166,13 @@
                         </flux:text>
 
                         @foreach ($results as $result)
-                            <a
-                                href="{{ $result->url }}"
-                                @if ($result->download) download @else wire:navigate @endif
-                                class="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                wire:key="modal-result-{{ $result->sourceKey }}-{{ $result->url }}"
-                                wire:click="closeModal"
-                            >
-                                <flux:icon :name="$result->icon" variant="mini" class="mt-0.5 shrink-0 text-zinc-500" />
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-medium">{{ $result->title }}</div>
-                                    @if ($result->subtitle)
-                                        <div class="truncate text-xs text-zinc-500">{{ $result->subtitle }}</div>
-                                    @endif
-                                </div>
-                            </a>
+                            @include('intranet-app-base::livewire.partials.search-result-row', [
+                                'result' => $result,
+                                'favorited' => in_array($result->favoriteKey, $favoritedKeys, true),
+                                'wireKey' => 'modal-result-'.$result->favoriteKey,
+                                'rowClick' => null,
+                                'wireClickClose' => true,
+                            ])
                         @endforeach
                     </div>
                 @empty
