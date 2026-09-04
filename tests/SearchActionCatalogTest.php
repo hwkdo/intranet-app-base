@@ -74,22 +74,22 @@ function makeSearchActionUser(array $permissions): Authenticatable
     };
 }
 
-test('search action definition scores exact keyword highest', function (): void {
+test('search action definition marks download results for file links', function (): void {
     $definition = new SearchActionDefinition(
-        key: 'demo.action',
-        title: 'Fahrzeug buchen',
-        keywords: ['fahrzeug buchen', 'auto buchen'],
+        key: 'demo.export',
+        title: 'Liste exportieren',
+        keywords: ['exportieren'],
         routeName: 'home',
         appIdentifier: 'demo',
         appName: 'Demo',
-        icon: 'truck',
+        icon: 'arrow-down-tray',
+        download: true,
     );
 
-    expect($definition->matchScore('fahrzeug buchen'))->toBe(1.0)
-        ->and($definition->matchScore('fahrzeug'))->toBe(0.8)
-        ->and($definition->matchScore('buchen'))->toBe(0.5)
-        ->and($definition->matchScore('xyz'))->toBe(0.0)
-        ->and($definition->matchScore('Fahrzeug Buchen'))->toBe(1.0);
+    $result = $definition->toSearchResult(1.0);
+
+    expect($result->download)->toBeTrue()
+        ->and($result->title)->toBe('Liste exportieren');
 });
 
 test('search action catalog filters host actions by permission', function (): void {

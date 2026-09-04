@@ -23,6 +23,7 @@ class SearchActionDefinition
         public readonly ?string $permission = null,
         public readonly ?string $subtitle = null,
         public readonly int $sort = 100,
+        public readonly bool $download = false,
     ) {}
 
     public function isEligible(Authenticatable $user): bool
@@ -106,6 +107,7 @@ class SearchActionDefinition
             subtitle: $this->subtitle ?? $this->appName,
             sourceKey: 'intranet.actions',
             score: $score,
+            download: $this->download,
         );
     }
 
