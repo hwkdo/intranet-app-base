@@ -35,6 +35,13 @@ return [
     'search_sources' => [],
 
     /**
+     * Host-Provider für kuratierte Such-Aktionen (Keyword → Route).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SearchActionProviderInterface>>
+     */
+    'search_action_providers' => [],
+
+    /**
      * Host-Provider für geführte User-Setups / Ersteinrichtung (z. B. Base-Pakete).
      *
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\SetupProviderInterface>>

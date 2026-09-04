@@ -37,6 +37,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class, \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchService::class);
+        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchActionCatalog::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
         $this->app->singleton(\Hwkdo\IntranetAppBase\Services\AppPackageVersionService::class);
