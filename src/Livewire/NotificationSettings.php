@@ -21,8 +21,19 @@ class NotificationSettings extends Component
     /** @var list<string> */
     private const ALLOWED_TABS = ['apps', 'news', 'settings'];
 
-    /** @var array<string, array{enabled: bool, channels: list<string>}> */
+    /**
+     * Placeholder for dots in type keys so Livewire wire:model paths stay flat.
+     */
+    private const TYPE_KEY_DOT_PLACEHOLDER = '__';
+
+    /**
+     * Preferences keyed by wire-safe type keys (dots replaced).
+     *
+     * @var array<string, array{enabled: bool, channels: list<string>}>
+     */
     public array $preferences = [];
+
+    public ?string $appIdentifier = null;
 
     #[Url(as: 'q', except: '', history: true)]
     public string $searchTerm = '';
@@ -30,8 +41,25 @@ class NotificationSettings extends Component
     #[Url(as: 'tab', except: 'apps', history: true)]
     public string $activeTab = 'apps';
 
-    public function mount(NotificationTypeCatalog $catalog, NotificationPreferenceResolver $resolver): void
+    public static function toWireKey(string $typeKey): string
     {
+        return str_replace('.', self::TYPE_KEY_DOT_PLACEHOLDER, $typeKey);
+    }
+
+    public static function fromWireKey(string $wireKey): string
+    {
+        return str_replace(self::TYPE_KEY_DOT_PLACEHOLDER, '.', $wireKey);
+    }
+
+    public function mount(
+        NotificationTypeCatalog $catalog,
+        NotificationPreferenceResolver $resolver,
+        ?string $appIdentifier = null,
+    ): void {
+        $this->appIdentifier = $appIdentifier !== null && $appIdentifier !== ''
+            ? $appIdentifier
+            : null;
+
         $this->normalizeActiveTab();
 
         $user = Auth::user();
@@ -40,13 +68,18 @@ class NotificationSettings extends Component
             return;
         }
 
-        foreach ($catalog->all() as $definition) {
+        foreach ($this->definitionsForScope($catalog) as $definition) {
             $resolved = $resolver->resolvePreference($user, $definition);
-            $this->preferences[$definition->key] = [
+            $this->preferences[self::toWireKey($definition->key)] = [
                 'enabled' => $resolved['enabled'],
                 'channels' => $resolved['channels'],
             ];
         }
+    }
+
+    public function isAppScoped(): bool
+    {
+        return $this->appIdentifier !== null;
     }
 
     public function updatedActiveTab(string $value): void
@@ -66,7 +99,44 @@ class NotificationSettings extends Component
     #[Computed]
     public function groupedTypes(): \Illuminate\Support\Collection
     {
-        return app(NotificationTypeCatalog::class)->groupedByApp();
+        $grouped = app(NotificationTypeCatalog::class)->groupedByApp();
+
+        if ($this->isAppScoped()) {
+            return $grouped->only([$this->appIdentifier]);
+        }
+
+        return $grouped;
+    }
+
+    #[Computed]
+    public function scopedAppName(): ?string
+    {
+        if (! $this->isAppScoped()) {
+            return null;
+        }
+
+        $types = $this->groupedTypes->get($this->appIdentifier);
+
+        return $types?->first()?->appName;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<string, NotificationTypeDefinition>
+     */
+    private function definitionsForScope(NotificationTypeCatalog $catalog): \Illuminate\Support\Collection
+    {
+        $definitions = $catalog->all();
+
+        if (! $this->isAppScoped()) {
+            return $definitions;
+        }
+
+        return $definitions
+            ->filter(
+                fn (NotificationTypeDefinition $definition): bool => $definition->appIdentifier === $this->appIdentifier,
+            )
+            ->values()
+            ->keyBy(fn (NotificationTypeDefinition $definition): string => $definition->key);
     }
 
     #[Computed]
@@ -204,17 +274,22 @@ class NotificationSettings extends Component
         $catalog = app(NotificationTypeCatalog::class);
         $resolver = app(NotificationPreferenceResolver::class);
 
-        foreach ($this->preferences as $typeKey => $preference) {
+        foreach ($this->preferences as $wireKey => $preference) {
+            $typeKey = self::fromWireKey($wireKey);
             $definition = $catalog->find($typeKey);
 
             if ($definition === null) {
                 continue;
             }
 
+            if ($this->isAppScoped() && $definition->appIdentifier !== $this->appIdentifier) {
+                continue;
+            }
+
             $resolver->savePreference(
                 $user,
                 $definition,
-                (bool) ($preference['enabled'] ?? true),
+                (bool) ($preference['enabled'] ?? $definition->defaultEnabled),
                 $preference['channels'] ?? [],
             );
         }
@@ -226,6 +301,34 @@ class NotificationSettings extends Component
         );
     }
 
+    public function toggleEnabled(string $typeKey): void
+    {
+        $definition = app(NotificationTypeCatalog::class)->find($typeKey);
+
+        if ($definition === null || $definition->mandatory) {
+            return;
+        }
+
+        if ($this->isAppScoped() && $definition->appIdentifier !== $this->appIdentifier) {
+            return;
+        }
+
+        $wireKey = self::toWireKey($typeKey);
+
+        if (! isset($this->preferences[$wireKey])) {
+            return;
+        }
+
+        $enabled = ! (bool) ($this->preferences[$wireKey]['enabled'] ?? false);
+        $this->preferences[$wireKey]['enabled'] = $enabled;
+
+        if ($enabled && ($this->preferences[$wireKey]['channels'] ?? []) === []) {
+            $this->preferences[$wireKey]['channels'] = $definition->defaultChannels !== []
+                ? $definition->defaultChannels
+                : ['inbox'];
+        }
+    }
+
     public function toggleChannel(string $typeKey, string $channelKey): void
     {
         $definition = app(NotificationTypeCatalog::class)->find($typeKey);
@@ -234,7 +337,12 @@ class NotificationSettings extends Component
             return;
         }
 
-        $channels = $this->preferences[$typeKey]['channels'] ?? [];
+        if ($this->isAppScoped() && $definition->appIdentifier !== $this->appIdentifier) {
+            return;
+        }
+
+        $wireKey = self::toWireKey($typeKey);
+        $channels = $this->preferences[$wireKey]['channels'] ?? [];
         $available = $definition->resolvedAvailableChannels();
 
         if (! in_array($channelKey, $available, true)) {
@@ -260,7 +368,7 @@ class NotificationSettings extends Component
             $channels[] = $channelKey;
         }
 
-        $this->preferences[$typeKey]['channels'] = $channels;
+        $this->preferences[$wireKey]['channels'] = $channels;
     }
 
     public function registerPushSubscription(
