@@ -1,20 +1,40 @@
 <div>
     @if($this->isAppScoped())
-        <flux:heading size="lg">
-            Benachrichtigungen{{ $this->scopedAppName ? ' – '.$this->scopedAppName : '' }}
-        </flux:heading>
-        <flux:subheading class="mb-6">
-            Legen Sie fest, welche Benachrichtigungen dieser App Sie über welche Kanäle erhalten möchten.
-        </flux:subheading>
+        <div class="max-w-2xl">
+            <flux:card class="glass-card">
+                @if($this->appsGroupedTypes->isEmpty())
+                    <flux:callout variant="warning" icon="bell">
+                        <flux:callout.heading>Keine Benachrichtigungstypen</flux:callout.heading>
+                        <flux:callout.text>
+                            Für diese App sind keine konfigurierbaren Benachrichtigungstypen hinterlegt.
+                        </flux:callout.text>
+                        <div class="mt-3">
+                            <flux:button
+                                href="{{ route('settings.notifications') }}"
+                                size="sm"
+                                variant="ghost"
+                                icon="arrow-top-right-on-square"
+                            >
+                                Alle Benachrichtigungen
+                            </flux:button>
+                        </div>
+                    </flux:callout>
+                @else
+                    <div class="space-y-3">
+                        @foreach($this->appsGroupedTypes as $scopedAppIdentifier => $types)
+                            @foreach($types as $definition)
+                                @include('intranet-app-base::livewire.partials.notification-type-preference', [
+                                    'definition' => $definition,
+                                    'showCentralPushHint' => true,
+                                ])
+                            @endforeach
+                        @endforeach
+                    </div>
 
-        <div class="space-y-4">
-            @if($this->appsGroupedTypes->isEmpty())
-                <flux:callout variant="warning" icon="bell" class="p-4">
-                    <flux:callout.heading>Keine Benachrichtigungstypen</flux:callout.heading>
-                    <flux:callout.text>
-                        Für diese App sind keine konfigurierbaren Benachrichtigungstypen hinterlegt.
-                    </flux:callout.text>
-                    <div class="mt-3">
+                    <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-700/80">
+                        <flux:button wire:click="save" variant="primary">
+                            Speichern
+                        </flux:button>
                         <flux:button
                             href="{{ route('settings.notifications') }}"
                             size="sm"
@@ -24,48 +44,12 @@
                             Alle Benachrichtigungen
                         </flux:button>
                     </div>
-                </flux:callout>
-            @else
-                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    @foreach($this->appsGroupedTypes as $scopedAppIdentifier => $types)
-                        <flux:card class="p-3">
-                            <flux:heading size="md" class="mb-3">
-                                {{ $types->first()->appName }}
-                            </flux:heading>
-
-                            <div class="space-y-3">
-                                @foreach($types as $definition)
-                            @include('intranet-app-base::livewire.partials.notification-type-preference', [
-                                'definition' => $definition,
-                                'showCentralPushHint' => true,
-                            ])
-                                @endforeach
-                            </div>
-                        </flux:card>
-                    @endforeach
-                </div>
-
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <flux:button
-                        href="{{ route('settings.notifications') }}"
-                        size="sm"
-                        variant="ghost"
-                        icon="arrow-top-right-on-square"
-                    >
-                        Alle Benachrichtigungen
-                    </flux:button>
-                    <flux:button wire:click="save" variant="primary">Speichern</flux:button>
-                </div>
-            @endif
+                @endif
+            </flux:card>
         </div>
     @else
-        <flux:heading size="lg">Benachrichtigungen</flux:heading>
-        <flux:subheading class="mb-6">
-            Wählen Sie, welche Benachrichtigungen Sie über welche Kanäle erhalten möchten.
-        </flux:subheading>
-
         <div class="space-y-4">
-            <flux:card class="p-3">
+            <flux:card class="glass-card p-3">
                 <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div class="flex-1">
                         <flux:input
@@ -121,7 +105,7 @@
                     @else
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                             @foreach($this->appsGroupedTypes as $appIdentifier => $types)
-                                <flux:card class="p-3">
+                                <flux:card class="glass-card p-3">
                                     <flux:heading size="md" class="mb-3">
                                         {{ $types->first()->appName }}
                                     </flux:heading>
@@ -156,7 +140,7 @@
                 </flux:tab.panel>
 
                 <flux:tab.panel name="settings">
-                    <flux:card class="mb-4">
+                    <flux:card class="glass-card mb-4">
                         <flux:heading size="md" class="mb-2">Web-Push-Geräte</flux:heading>
                         <flux:text class="mb-4 text-sm text-zinc-500">
                             Registrieren Sie diesen Browser, um Push-Benachrichtigungen auch außerhalb des Intranets zu erhalten.
@@ -209,7 +193,7 @@
                         @endif
                     </flux:card>
 
-                    <flux:card>
+                    <flux:card class="glass-card">
                         <flux:heading size="md" class="mb-2">Testbenachrichtigung</flux:heading>
                         <flux:text class="mb-4 text-sm text-zinc-500">
                             Senden Sie eine Testbenachrichtigung an sich selbst, um die Zustellung über einzelne Kanäle zu prüfen.
