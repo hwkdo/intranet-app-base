@@ -177,15 +177,27 @@ class NotificationPreferenceResolver
             return false;
         }
 
-        if (! filled($notifiable->socialite_id ?? null)) {
+        if (! (bool) config('intranet-app-teams-bot.bot.enabled', false)) {
             return false;
         }
 
-        if (! interface_exists(\Hwkdo\IntranetAppTeamsBot\Interfaces\TeamsActivityFeedServiceInterface::class)) {
+        $azureUserId = $notifiable->socialite_id ?? null;
+
+        if (! is_string($azureUserId) || $azureUserId === '') {
             return false;
         }
 
-        return app(\Hwkdo\IntranetAppTeamsBot\Interfaces\TeamsActivityFeedServiceInterface::class)->isEnabled();
+        if (! class_exists(\Hwkdo\IntranetAppTeamsBot\Models\TeamsBotConversation::class)) {
+            return false;
+        }
+
+        return \Hwkdo\IntranetAppTeamsBot\Models\TeamsBotConversation::query()
+            ->whereRaw('LOWER(azure_user_id) = ?', [strtolower($azureUserId)])
+            ->where(
+                'status',
+                \Hwkdo\IntranetAppTeamsBot\Enums\TeamsBotConversationStatus::Active,
+            )
+            ->exists();
     }
 
     public function webPushAvailableFor(Authenticatable $notifiable): bool

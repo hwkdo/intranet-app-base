@@ -13,5 +13,7 @@ class NotificationPayload
         public readonly ?string $appIdentifier = null,
         public readonly ?string $mailSubject = null,
         public readonly ?string $teamsTopic = null,
+        public readonly ?string $mailFooterLinkText = null,
+        public readonly ?string $mailFooterLinkUrl = null,
     ) {}
 }

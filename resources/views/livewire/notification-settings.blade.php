@@ -141,6 +141,39 @@
 
                 <flux:tab.panel name="settings">
                     <flux:card class="glass-card mb-4">
+                        <flux:heading size="md" class="mb-2">Microsoft Teams</flux:heading>
+                        <flux:text class="mb-4 text-sm text-zinc-500">
+                            Benachrichtigungen über Teams laufen als 1:1-Bot-Konversation. Dafür muss der Teams-Bot für Ihr Konto installiert und aktiv sein.
+                        </flux:text>
+
+                        @if(! $this->teamsBotEnabled)
+                            <flux:callout variant="warning" icon="exclamation-triangle">
+                                Der Teams-Bot ist serverseitig deaktiviert.
+                            </flux:callout>
+                        @elseif(! $this->teamsHasMicrosoftLogin)
+                            <flux:callout variant="warning" icon="exclamation-triangle">
+                                Bitte melden Sie sich einmal mit Microsoft an, damit Teams eingerichtet werden kann.
+                            </flux:callout>
+                        @elseif($this->teamsAvailable)
+                            <flux:callout variant="success" icon="check-circle">
+                                Teams-Bot ist aktiv. Sie können den Kanal „Teams“ bei den Benachrichtigungstypen einschalten.
+                            </flux:callout>
+                        @else
+                            <flux:callout variant="warning" icon="chat-bubble-left-right" class="mb-4">
+                                Teams ist noch nicht eingerichtet. Klicken Sie auf „Teams einrichten“, um den Bot für Ihr Konto zu installieren.
+                            </flux:callout>
+                            <flux:button
+                                type="button"
+                                wire:click="setupTeamsBot"
+                                wire:loading.attr="disabled"
+                                icon="chat-bubble-left-right"
+                            >
+                                Teams einrichten
+                            </flux:button>
+                        @endif
+                    </flux:card>
+
+                    <flux:card class="glass-card mb-4">
                         <flux:heading size="md" class="mb-2">Web-Push-Geräte</flux:heading>
                         <flux:text class="mb-4 text-sm text-zinc-500">
                             Registrieren Sie diesen Browser, um Push-Benachrichtigungen auch außerhalb des Intranets zu erhalten.

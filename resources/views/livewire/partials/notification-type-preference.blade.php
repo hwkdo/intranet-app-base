@@ -58,7 +58,12 @@
 
         @if(in_array('teams', $pref['channels'] ?? [], true) && ! $this->teamsAvailable)
             <flux:callout variant="warning" class="mt-2" icon="chat-bubble-left-right">
-                Teams ist nicht verfügbar (Microsoft-Anmeldung oder Activity Feed fehlt).
+                Teams ist noch nicht bereit (aktive Bot-Konversation fehlt).
+                @unless($this->isAppScoped())
+                    Bitte unter
+                    <a href="{{ route('settings.notifications', ['tab' => 'settings']) }}" class="underline">Einstellungen</a>
+                    „Teams einrichten“ ausführen.
+                @endunless
             </flux:callout>
         @endif
     @endif

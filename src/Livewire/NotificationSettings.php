@@ -250,6 +250,107 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
+    public function teamsBotEnabled(): bool
+    {
+        return (bool) config('intranet-app-teams-bot.bot.enabled', false)
+            && class_exists(\Hwkdo\IntranetAppTeamsBot\Services\TeamsBotInstallationService::class);
+    }
+
+    #[Computed]
+    public function teamsHasMicrosoftLogin(): bool
+    {
+        $user = Auth::user();
+
+        return $user && filled($user->socialite_id ?? null);
+    }
+
+    #[Computed]
+    public function teamsNeedsSetup(): bool
+    {
+        return $this->teamsBotEnabled
+            && $this->teamsHasMicrosoftLogin
+            && ! $this->teamsAvailable;
+    }
+
+    public function setupTeamsBot(): void
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return;
+        }
+
+        if (! $this->teamsBotEnabled) {
+            Flux::toast(
+                heading: 'Teams nicht verfügbar',
+                text: 'Der Teams-Bot ist serverseitig deaktiviert.',
+                variant: 'warning',
+            );
+
+            return;
+        }
+
+        $azureUserId = $user->socialite_id ?? null;
+
+        if (! is_string($azureUserId) || $azureUserId === '') {
+            Flux::toast(
+                heading: 'Microsoft-Anmeldung fehlt',
+                text: 'Bitte melden Sie sich einmal mit Microsoft an, bevor Teams eingerichtet werden kann.',
+                variant: 'warning',
+            );
+
+            return;
+        }
+
+        $upn = method_exists($user, 'getAttribute') && filled($user->upn ?? null)
+            ? (string) $user->upn
+            : (string) ($user->email ?? '');
+
+        if ($upn === '') {
+            Flux::toast(
+                heading: 'UPN fehlt',
+                text: 'Für Ihr Konto konnte keine E-Mail/UPN ermittelt werden.',
+                variant: 'warning',
+            );
+
+            return;
+        }
+
+        try {
+            app(\Hwkdo\IntranetAppTeamsBot\Services\TeamsBotInstallationService::class)
+                ->installForUserSync(
+                    strtolower($azureUserId),
+                    $upn,
+                    is_string($user->name ?? null) ? $user->name : null,
+                );
+
+            unset($this->teamsAvailable, $this->teamsNeedsSetup);
+
+            if (app(NotificationPreferenceResolver::class)->teamsAvailableFor($user)) {
+                Flux::toast(
+                    heading: 'Teams eingerichtet',
+                    text: 'Der Teams-Bot ist aktiv. Sie können den Kanal Teams jetzt in den Benachrichtigungen aktivieren.',
+                    variant: 'success',
+                );
+
+                return;
+            }
+
+            Flux::toast(
+                heading: 'Teams-Installation gestartet',
+                text: 'Bitte öffnen Sie kurz den Bot-Chat in Teams und kehren Sie danach hierher zurück.',
+                variant: 'success',
+            );
+        } catch (\Throwable $exception) {
+            Flux::toast(
+                heading: 'Teams-Einrichtung fehlgeschlagen',
+                text: $exception->getMessage(),
+                variant: 'danger',
+            );
+        }
+    }
+
+    #[Computed]
     public function webPushConfigured(): bool
     {
         return filled(config('webpush.vapid.public_key'));

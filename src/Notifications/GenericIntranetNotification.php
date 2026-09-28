@@ -32,6 +32,15 @@ class GenericIntranetNotification extends IntranetNotification
             $mail->action('Öffnen', $this->payload->url);
         }
 
+        if (
+            $this->payload->mailFooterLinkText !== null
+            && $this->payload->mailFooterLinkText !== ''
+            && $this->payload->mailFooterLinkUrl !== null
+            && $this->payload->mailFooterLinkUrl !== ''
+        ) {
+            $mail->line('['.$this->payload->mailFooterLinkText.']('.$this->payload->mailFooterLinkUrl.')');
+        }
+
         return $mail;
     }
 
