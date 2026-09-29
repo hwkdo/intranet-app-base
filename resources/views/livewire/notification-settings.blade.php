@@ -234,15 +234,38 @@
 
                         <div class="flex flex-wrap gap-3">
                             @foreach(\Hwkdo\IntranetAppBase\Enums\NotificationChannelKey::cases() as $channel)
-                                <flux:button
-                                    size="sm"
-                                    variant="outline"
-                                    wire:click="sendTestNotification('{{ $channel->value }}')"
-                                    :disabled="$this->channelDisabledForUser($channel->value)"
-                                    icon="paper-airplane"
-                                >
-                                    {{ $channel->label() }}
-                                </flux:button>
+                                @php
+                                    $testDisabled = $this->channelDisabledForUser($channel->value);
+                                    $testDisabledReason = $testDisabled
+                                        ? $this->channelDisabledReason($channel->value)
+                                        : null;
+                                @endphp
+                                @if($testDisabled && $testDisabledReason)
+                                    <flux:tooltip position="top">
+                                        <span class="inline-flex cursor-help">
+                                            <flux:button
+                                                size="sm"
+                                                variant="outline"
+                                                :disabled="true"
+                                                icon="paper-airplane"
+                                            >
+                                                {{ $channel->label() }}
+                                            </flux:button>
+                                        </span>
+                                        <flux:tooltip.content class="max-w-xs">
+                                            {{ $testDisabledReason }}
+                                        </flux:tooltip.content>
+                                    </flux:tooltip>
+                                @else
+                                    <flux:button
+                                        size="sm"
+                                        variant="outline"
+                                        wire:click="sendTestNotification('{{ $channel->value }}')"
+                                        icon="paper-airplane"
+                                    >
+                                        {{ $channel->label() }}
+                                    </flux:button>
+                                @endif
                             @endforeach
                         </div>
                     </flux:card>

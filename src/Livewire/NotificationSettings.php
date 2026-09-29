@@ -450,7 +450,13 @@ class NotificationSettings extends Component
             return;
         }
 
-        if (in_array($channelKey, $channels, true)) {
+        $isSelected = in_array($channelKey, $channels, true);
+
+        if (! $isSelected && $this->channelDisabledForUser($channelKey)) {
+            return;
+        }
+
+        if ($isSelected) {
             $channels = array_values(array_filter(
                 $channels,
                 fn (string $channel): bool => $channel !== $channelKey,
@@ -587,9 +593,44 @@ class NotificationSettings extends Component
 
         return match ($channelKey) {
             NotificationChannelKey::Teams->value => ! $resolver->teamsAvailableFor($user),
-            NotificationChannelKey::WebPush->value => ! $this->webPushConfigured,
+            NotificationChannelKey::WebPush->value => ! $resolver->webPushAvailableFor($user),
             default => false,
         };
+    }
+
+    public function channelDisabledReason(string $channelKey): ?string
+    {
+        if (! $this->channelDisabledForUser($channelKey)) {
+            return null;
+        }
+
+        return match ($channelKey) {
+            NotificationChannelKey::Teams->value => $this->teamsDisabledReason(),
+            NotificationChannelKey::WebPush->value => $this->webPushDisabledReason(),
+            default => 'Dieser Kanal ist für Ihr Konto nicht verfügbar.',
+        };
+    }
+
+    private function teamsDisabledReason(): string
+    {
+        if (! $this->teamsBotEnabled) {
+            return 'Der Teams-Bot ist serverseitig deaktiviert.';
+        }
+
+        if (! $this->teamsHasMicrosoftLogin) {
+            return 'Bitte melden Sie sich einmal mit Microsoft an, bevor Teams aktiviert werden kann.';
+        }
+
+        return 'Teams ist noch nicht eingerichtet. Bitte unter „Einstellungen“ den Punkt „Teams einrichten“ ausführen.';
+    }
+
+    private function webPushDisabledReason(): string
+    {
+        if (! $this->webPushConfigured) {
+            return 'Web-Push ist serverseitig noch nicht konfiguriert (VAPID-Schlüssel fehlen).';
+        }
+
+        return 'Für dieses Konto ist kein Browser registriert. Bitte unter „Einstellungen“ einen Browser für Web-Push aktivieren.';
     }
 
     public function render()

@@ -206,6 +206,10 @@ class NotificationPreferenceResolver
             return false;
         }
 
+        if (! filled(config('webpush.vapid.public_key'))) {
+            return false;
+        }
+
         if (! method_exists($notifiable, 'pushSubscriptions')) {
             return false;
         }

@@ -30,14 +30,33 @@
             @foreach($definition->resolvedAvailableChannels() as $channelKey)
                 @php
                     $checked = in_array($channelKey, $pref['channels'] ?? [], true);
-                    $disabled = $this->channelDisabledForUser($channelKey);
+                    $unavailable = $this->channelDisabledForUser($channelKey);
+                    $disabled = $unavailable && ! $checked;
+                    $disabledReason = $unavailable ? $this->channelDisabledReason($channelKey) : null;
+                    $channelLabel = $this->channelOptions[$channelKey] ?? $channelKey;
                 @endphp
-                <flux:checkbox
-                    wire:click="toggleChannel('{{ $definition->key }}', '{{ $channelKey }}')"
-                    :checked="$checked"
-                    :disabled="$disabled"
-                    label="{{ $this->channelOptions[$channelKey] ?? $channelKey }}"
-                />
+                @if($disabledReason)
+                    <flux:tooltip position="top">
+                        <span class="inline-flex {{ $disabled ? 'cursor-help' : '' }}">
+                            <flux:checkbox
+                                wire:click="toggleChannel('{{ $definition->key }}', '{{ $channelKey }}')"
+                                :checked="$checked"
+                                :disabled="$disabled"
+                                label="{{ $channelLabel }}"
+                            />
+                        </span>
+                        <flux:tooltip.content class="max-w-xs">
+                            {{ $disabledReason }}
+                        </flux:tooltip.content>
+                    </flux:tooltip>
+                @else
+                    <flux:checkbox
+                        wire:click="toggleChannel('{{ $definition->key }}', '{{ $channelKey }}')"
+                        :checked="$checked"
+                        :disabled="false"
+                        label="{{ $channelLabel }}"
+                    />
+                @endif
             @endforeach
         </div>
 
