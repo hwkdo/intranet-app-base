@@ -98,7 +98,7 @@
                             </flux:callout>
                         @endforelse
 
-                        @if ($this->previewResponse->totalCount > $this->previewLimit)
+                        @if ($this->previewResponse->hasMoreResults())
                             <flux:button
                                 variant="ghost"
                                 class="w-full justify-center"

@@ -27,10 +27,10 @@
             <flux:navlist>
                 @foreach($navItems as $navItem)
                     @if(($navItem['type'] ?? '') === 'separator')
-                        @if(!isset($navItem['permission']) || auth()->user()->can($navItem['permission']))
+                        @if(!isset($navItem['permission']) || auth()->user()?->can($navItem['permission']))
                             <flux:separator :text="$navItem['label']" class="my-3" />
                         @endif
-                    @elseif(!isset($navItem['permission']) || auth()->user()->can($navItem['permission']))
+                    @elseif(!isset($navItem['permission']) || auth()->user()?->can($navItem['permission']))
                         @if(! empty($navItem['requiresAiUsage']) && ! $canUseAi)
                             <x-intranet-app-base::ai-usage-locked-nav-item :label="$navItem['label']" />
                         @else

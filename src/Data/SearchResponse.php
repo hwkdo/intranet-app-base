@@ -17,4 +17,12 @@ class SearchResponse
         public readonly Collection $groupedResults,
         public readonly int $totalCount,
     ) {}
+
+    /**
+     * True when preview/modal diversification or caps hid some matches.
+     */
+    public function hasMoreResults(): bool
+    {
+        return $this->totalCount > $this->results->count();
+    }
 }
