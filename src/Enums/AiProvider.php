@@ -17,6 +17,7 @@ enum AiProvider: string
     case Ollama = 'ollama';
     case OpenRouter = 'openrouter';
     case Xai = 'xai';
+    case GemmaLlamaCpp = 'gemma-llama-cpp';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum AiProvider: string
             self::Ollama => 'Ollama',
             self::OpenRouter => 'OpenRouter',
             self::Xai => 'xAI',
+            self::GemmaLlamaCpp => 'Gemma (llama.cpp)',
         };
     }
 }
