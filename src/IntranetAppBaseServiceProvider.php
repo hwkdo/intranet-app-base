@@ -2,6 +2,43 @@
 
 namespace Hwkdo\IntranetAppBase;
 
+use Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate;
+use Hwkdo\IntranetAppBase\Commands\SyncAppSettings;
+use Hwkdo\IntranetAppBase\Commands\SyncIntranetAppPermissions;
+use Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface;
+use Hwkdo\IntranetAppBase\Contracts\IntranetNotificationGatewayInterface;
+use Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface;
+use Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification;
+use Hwkdo\IntranetAppBase\Livewire\AdminSettings;
+use Hwkdo\IntranetAppBase\Livewire\AppInfo;
+use Hwkdo\IntranetAppBase\Livewire\DocumentParseSettings;
+use Hwkdo\IntranetAppBase\Livewire\GlobalSearch;
+use Hwkdo\IntranetAppBase\Livewire\IhreAufgaben;
+use Hwkdo\IntranetAppBase\Livewire\ManualShow;
+use Hwkdo\IntranetAppBase\Livewire\NotificationBell;
+use Hwkdo\IntranetAppBase\Livewire\NotificationSettings;
+use Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown;
+use Hwkdo\IntranetAppBase\Livewire\TourTrigger;
+use Hwkdo\IntranetAppBase\Services\AppPackageVersionService;
+use Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService;
+use Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry;
+use Hwkdo\IntranetAppBase\Services\GithubAppReleaseService;
+use Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway;
+use Hwkdo\IntranetAppBase\Services\ManualCatalog;
+use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
+use Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog;
+use Hwkdo\IntranetAppBase\Services\SearchActionCatalog;
+use Hwkdo\IntranetAppBase\Services\SearchFavoriteStore;
+use Hwkdo\IntranetAppBase\Services\SearchService;
+use Hwkdo\IntranetAppBase\Services\SetupCatalog;
+use Hwkdo\IntranetAppBase\Services\SetupProgressStore;
+use Hwkdo\IntranetAppBase\Services\SseStreamParser;
+use Hwkdo\IntranetAppBase\Services\TaskService;
+use Hwkdo\IntranetAppBase\Services\TourCatalog;
+use Hwkdo\IntranetAppBase\Services\TourProgressStore;
+use Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource;
+use Hwkdo\IntranetAppBase\Support\DefaultUserSearchPreferencesSource;
+use Hwkdo\IntranetAppBase\Support\ManualAssetResolver;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
@@ -24,48 +61,48 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             ->hasViews()
             ->hasRoutes('manuals')
             ->hasMigrations()
-            ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncAppSettings::class)
-            ->hasCommand(\Hwkdo\IntranetAppBase\Commands\GenerateAppFromTemplate::class)
-            ->hasCommand(\Hwkdo\IntranetAppBase\Commands\SyncIntranetAppPermissions::class);
+            ->hasCommand(SyncAppSettings::class)
+            ->hasCommand(GenerateAppFromTemplate::class)
+            ->hasCommand(SyncIntranetAppPermissions::class);
     }
 
     public function bootingPackage()
     {
         require_once __DIR__.'/Support/helpers.php';
 
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SseStreamParser::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TaskService::class);
+        $this->app->singleton(SseStreamParser::class);
+        $this->app->singleton(TaskService::class);
 
-        if (! $this->app->bound(\Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class)) {
+        if (! $this->app->bound(GlobalSearchSettingsSourceInterface::class)) {
             $this->app->singleton(
-                \Hwkdo\IntranetAppBase\Contracts\GlobalSearchSettingsSourceInterface::class,
-                \Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource::class,
+                GlobalSearchSettingsSourceInterface::class,
+                DefaultGlobalSearchSettingsSource::class,
             );
         }
 
-        if (! $this->app->bound(\Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface::class)) {
+        if (! $this->app->bound(UserSearchPreferencesSourceInterface::class)) {
             $this->app->singleton(
-                \Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface::class,
-                \Hwkdo\IntranetAppBase\Support\DefaultUserSearchPreferencesSource::class,
+                UserSearchPreferencesSourceInterface::class,
+                DefaultUserSearchPreferencesSource::class,
             );
         }
 
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchService::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchFavoriteStore::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SearchActionCatalog::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\AppPackageVersionService::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\GithubAppReleaseService::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Contracts\IntranetNotificationGatewayInterface::class, \Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupCatalog::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\SetupProgressStore::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourCatalog::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\TourProgressStore::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Services\ManualCatalog::class);
-        $this->app->singleton(\Hwkdo\IntranetAppBase\Support\ManualAssetResolver::class);
+        $this->app->singleton(SearchService::class);
+        $this->app->singleton(SearchFavoriteStore::class);
+        $this->app->singleton(SearchActionCatalog::class);
+        $this->app->singleton(DashboardGridLayoutService::class);
+        $this->app->singleton(DashboardWidgetRegistry::class);
+        $this->app->singleton(AppPackageVersionService::class);
+        $this->app->singleton(GithubAppReleaseService::class);
+        $this->app->singleton(NotificationTypeCatalog::class);
+        $this->app->singleton(NotificationPreferenceResolver::class);
+        $this->app->singleton(IntranetNotificationGatewayInterface::class, IntranetNotificationGateway::class);
+        $this->app->singleton(SetupCatalog::class);
+        $this->app->singleton(SetupProgressStore::class);
+        $this->app->singleton(TourCatalog::class);
+        $this->app->singleton(TourProgressStore::class);
+        $this->app->singleton(ManualCatalog::class);
+        $this->app->singleton(ManualAssetResolver::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -93,24 +130,25 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
             viewPath: __DIR__.'/../resources/views/livewire/app-background-image.blade.php'
         );
 
-        Livewire::component('intranet-app-base.ihre-aufgaben', \Hwkdo\IntranetAppBase\Livewire\IhreAufgaben::class);
-        Livewire::component('intranet-app-base.app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
-        Livewire::component('intranet-app-base::app-info', \Hwkdo\IntranetAppBase\Livewire\AppInfo::class);
-        Livewire::component('intranet-app-base::admin-settings', \Hwkdo\IntranetAppBase\Livewire\AdminSettings::class);
-        Livewire::component('intranet-app-base::notification-settings', \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::class);
-        Livewire::component('intranet-app-base.notification-settings', \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::class);
-        Livewire::component('intranet-app-base::notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
-        Livewire::component('intranet-app-base.notification-bell', \Hwkdo\IntranetAppBase\Livewire\NotificationBell::class);
-        Livewire::component('intranet-app-base::global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
-        Livewire::component('intranet-app-base.global-search', \Hwkdo\IntranetAppBase\Livewire\GlobalSearch::class);
-        Livewire::component('intranet-app-base::search-favorites-dropdown', \Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown::class);
-        Livewire::component('intranet-app-base.search-favorites-dropdown', \Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown::class);
-        Livewire::component('intranet-app-base::tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
-        Livewire::component('intranet-app-base.tour-trigger', \Hwkdo\IntranetAppBase\Livewire\TourTrigger::class);
-        Livewire::component('intranet-app-base::manual-show', \Hwkdo\IntranetAppBase\Livewire\ManualShow::class);
-        Livewire::component('intranet-app-base.manual-show', \Hwkdo\IntranetAppBase\Livewire\ManualShow::class);
+        Livewire::component('intranet-app-base.ihre-aufgaben', IhreAufgaben::class);
+        Livewire::component('intranet-app-base.app-info', AppInfo::class);
+        Livewire::component('intranet-app-base::app-info', AppInfo::class);
+        Livewire::component('intranet-app-base::admin-settings', AdminSettings::class);
+        Livewire::component('intranet-app-base::document-parse-settings', DocumentParseSettings::class);
+        Livewire::component('intranet-app-base::notification-settings', NotificationSettings::class);
+        Livewire::component('intranet-app-base.notification-settings', NotificationSettings::class);
+        Livewire::component('intranet-app-base::notification-bell', NotificationBell::class);
+        Livewire::component('intranet-app-base.notification-bell', NotificationBell::class);
+        Livewire::component('intranet-app-base::global-search', GlobalSearch::class);
+        Livewire::component('intranet-app-base.global-search', GlobalSearch::class);
+        Livewire::component('intranet-app-base::search-favorites-dropdown', SearchFavoritesDropdown::class);
+        Livewire::component('intranet-app-base.search-favorites-dropdown', SearchFavoritesDropdown::class);
+        Livewire::component('intranet-app-base::tour-trigger', TourTrigger::class);
+        Livewire::component('intranet-app-base.tour-trigger', TourTrigger::class);
+        Livewire::component('intranet-app-base::manual-show', ManualShow::class);
+        Livewire::component('intranet-app-base.manual-show', ManualShow::class);
 
-        Event::listen(NotificationSent::class, \Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification::class);
+        Event::listen(NotificationSent::class, BroadcastInboxNotification::class);
     }
 
     public function boot()

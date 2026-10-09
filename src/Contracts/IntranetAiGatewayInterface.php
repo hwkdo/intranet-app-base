@@ -8,6 +8,8 @@ use Hwkdo\IntranetAppBase\Data\AiChatResult;
 use Hwkdo\IntranetAppBase\Data\AiImageOptions;
 use Hwkdo\IntranetAppBase\Data\AiImageResult;
 use Hwkdo\IntranetAppBase\Data\AiRequestContext;
+use Hwkdo\IntranetAppBase\Data\DocumentParseOptions;
+use Hwkdo\IntranetAppBase\Enums\DocumentParseEngine;
 
 interface IntranetAiGatewayInterface
 {
@@ -35,4 +37,13 @@ interface IntranetAiGatewayInterface
         int $requestTimeoutSeconds = 120,
         int $connectTimeoutSeconds = 10,
     ): array;
+
+    public function parseDocument(
+        string $absolutePath,
+        DocumentParseEngine $engine,
+        AiRequestContext $context,
+        ?DocumentParseOptions $options = null,
+    ): string;
+
+    public function parseAppDocument(string $absolutePath, string $appIdentifier, ?int $userId = null): string;
 }

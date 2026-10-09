@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hwkdo\IntranetAppBase\Contracts;
 
 use Hwkdo\IntranetAppBase\Enums\AiProvider;
+use Hwkdo\IntranetAppBase\Enums\DocumentParseEngine;
 
 interface IntranetBaseAiConfigSourceInterface
 {
@@ -15,4 +16,8 @@ interface IntranetBaseAiConfigSourceInterface
     public function imageProvider(): AiProvider;
 
     public function imageModel(): ?string;
+
+    public function documentParseEngine(): DocumentParseEngine;
+
+    public function documentParseTier(): string;
 }
