@@ -18,6 +18,7 @@ enum AiProvider: string
     case OpenRouter = 'openrouter';
     case Xai = 'xai';
     case GemmaLlamaCpp = 'gemma-llama-cpp';
+    case ComfyUi = 'comfyui';
 
     public function label(): string
     {
@@ -34,6 +35,7 @@ enum AiProvider: string
             self::OpenRouter => 'OpenRouter',
             self::Xai => 'xAI',
             self::GemmaLlamaCpp => 'Gemma (llama.cpp)',
+            self::ComfyUi => 'ComfyUI (Images)',
         };
     }
 }
