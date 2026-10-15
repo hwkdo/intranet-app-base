@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Hwkdo\IntranetAppBase\Notifications;
 
-use Hwkdo\IntranetAppBase\Enums\NotificationChannelKey;
 use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
-class TestNotification extends Notification
+class TestNotification extends Notification implements ShouldQueue
 {
+    use Queueable;
+
     /** @param list<string> $channels */
     public function __construct(
         private readonly array $channels,

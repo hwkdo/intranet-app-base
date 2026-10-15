@@ -61,4 +61,11 @@ return [
      * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\ManualProviderInterface>>
      */
     'manual_providers' => [],
+
+    /**
+     * Host-Provider für Hintergrundaktivitäten der Main-App (Scheduler, Mail, Jobs).
+     *
+     * @var array<int, class-string<\Hwkdo\IntranetAppBase\Interfaces\BackgroundActivityProviderInterface>>
+     */
+    'background_activity_providers' => [],
 ];

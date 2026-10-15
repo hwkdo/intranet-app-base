@@ -11,6 +11,7 @@ use Hwkdo\IntranetAppBase\Contracts\UserSearchPreferencesSourceInterface;
 use Hwkdo\IntranetAppBase\Listeners\BroadcastInboxNotification;
 use Hwkdo\IntranetAppBase\Livewire\AdminSettings;
 use Hwkdo\IntranetAppBase\Livewire\AppInfo;
+use Hwkdo\IntranetAppBase\Livewire\BackgroundActivities;
 use Hwkdo\IntranetAppBase\Livewire\DocumentParseSettings;
 use Hwkdo\IntranetAppBase\Livewire\GlobalSearch;
 use Hwkdo\IntranetAppBase\Livewire\IhreAufgaben;
@@ -20,6 +21,11 @@ use Hwkdo\IntranetAppBase\Livewire\NotificationSettings;
 use Hwkdo\IntranetAppBase\Livewire\SearchFavoritesDropdown;
 use Hwkdo\IntranetAppBase\Livewire\TourTrigger;
 use Hwkdo\IntranetAppBase\Services\AppPackageVersionService;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityCatalog;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityConfigStore;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityRegistrar;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityRunRecorder;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityRunStore;
 use Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService;
 use Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry;
 use Hwkdo\IntranetAppBase\Services\GithubAppReleaseService;
@@ -39,7 +45,12 @@ use Hwkdo\IntranetAppBase\Services\TourProgressStore;
 use Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource;
 use Hwkdo\IntranetAppBase\Support\DefaultUserSearchPreferencesSource;
 use Hwkdo\IntranetAppBase\Support\ManualAssetResolver;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Livewire\Volt\Volt;
@@ -103,6 +114,11 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(TourProgressStore::class);
         $this->app->singleton(ManualCatalog::class);
         $this->app->singleton(ManualAssetResolver::class);
+        $this->app->singleton(BackgroundActivityCatalog::class);
+        $this->app->singleton(BackgroundActivityConfigStore::class);
+        $this->app->singleton(BackgroundActivityRunStore::class);
+        $this->app->singleton(BackgroundActivityRegistrar::class);
+        $this->app->singleton(BackgroundActivityRunRecorder::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(
@@ -147,8 +163,29 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         Livewire::component('intranet-app-base.tour-trigger', TourTrigger::class);
         Livewire::component('intranet-app-base::manual-show', ManualShow::class);
         Livewire::component('intranet-app-base.manual-show', ManualShow::class);
+        Livewire::component('intranet-app-base::background-activities', BackgroundActivities::class);
+        Livewire::component('intranet-app-base.background-activities', BackgroundActivities::class);
 
         Event::listen(NotificationSent::class, BroadcastInboxNotification::class);
+        Event::listen(NotificationSent::class, function (NotificationSent $event): void {
+            app(BackgroundActivityRunRecorder::class)->onNotificationSent($event);
+        });
+        Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            app(BackgroundActivityRunRecorder::class)->onCommandStarting($event);
+        });
+        Event::listen(CommandFinished::class, function (CommandFinished $event): void {
+            app(BackgroundActivityRunRecorder::class)->onCommandFinished($event);
+        });
+        Event::listen(JobProcessed::class, function (JobProcessed $event): void {
+            app(BackgroundActivityRunRecorder::class)->onJobProcessed($event);
+        });
+        Event::listen(JobFailed::class, function (JobFailed $event): void {
+            app(BackgroundActivityRunRecorder::class)->onJobFailed($event);
+        });
+
+        $this->app->resolving(Schedule::class, function (Schedule $schedule): void {
+            app(BackgroundActivityRegistrar::class)->register($schedule);
+        });
     }
 
     public function boot()
