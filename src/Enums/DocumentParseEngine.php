@@ -20,4 +20,13 @@ enum DocumentParseEngine: string
             self::HwkAdmin => 'HWK Admin',
         };
     }
+
+    /**
+     * Ob der Motor Klartext-/HTML-Tempdateien sinnvoll verarbeiten kann.
+     * Vision, pdftotext und HWK Admin erwarten PDF oder Bilder.
+     */
+    public function acceptsTextPayload(): bool
+    {
+        return $this === self::LlamaParse;
+    }
 }
