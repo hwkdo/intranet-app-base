@@ -7,6 +7,7 @@ namespace Hwkdo\IntranetAppBase\Services;
 use Hwkdo\IntranetAppBase\Data\BackgroundActivityDefinition;
 use Hwkdo\IntranetAppBase\Data\BackgroundActivityFrequency;
 use Hwkdo\IntranetAppBase\Data\BackgroundActivityParameter;
+use Hwkdo\IntranetAppBase\Enums\BackgroundActivityCadence;
 use Hwkdo\IntranetAppBase\Enums\BackgroundActivityKind;
 use Hwkdo\IntranetAppBase\Models\BackgroundActivityConfig;
 use Illuminate\Support\Facades\Schema;
@@ -103,7 +104,7 @@ class BackgroundActivityConfigStore
                 'enabled' => (bool) $input['enabled'],
                 'cadence' => $frequency->cadence,
                 'every' => $frequency->every,
-                'offset' => $definition->allowsOffset ? $frequency->offset : 0,
+                'offset' => $this->storedOffset($definition, $frequency),
                 'at' => $frequency->at,
                 'day_of_week' => $frequency->dayOfWeek,
                 'parameters' => $parameters,
@@ -142,6 +143,12 @@ class BackgroundActivityConfigStore
             ]);
         }
 
+        if ($frequency->cadence === BackgroundActivityCadence::EveryNMinutes && $frequency->every > 59) {
+            throw ValidationException::withMessages([
+                'every' => 'Ein Minuten-Intervall ist höchstens 59. Für jede Stunde die Kadenz „Alle N Stunden“ mit Intervall 1 verwenden.',
+            ]);
+        }
+
         if ($definition->minEvery !== null && $frequency->every < $definition->minEvery) {
             throw ValidationException::withMessages([
                 'every' => 'Das Intervall liegt unter dem Minimum.',
@@ -153,6 +160,15 @@ class BackgroundActivityConfigStore
                 'every' => 'Das Intervall liegt über dem Maximum.',
             ]);
         }
+    }
+
+    private function storedOffset(BackgroundActivityDefinition $definition, BackgroundActivityFrequency $frequency): int
+    {
+        if ($frequency->cadence !== BackgroundActivityCadence::EveryNHours && ! $definition->allowsOffset) {
+            return 0;
+        }
+
+        return max(0, min(59, $frequency->offset));
     }
 
     /**

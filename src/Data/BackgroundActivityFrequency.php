@@ -104,7 +104,12 @@ final class BackgroundActivityFrequency
 
     private function everyNMinutesCron(): string
     {
-        $every = max(1, min(59, $this->every));
+        // 60 Minuten sind kein gültiger Minuten-Schritt. */59 liefe um :59 und :00.
+        if ($this->every >= 60) {
+            return '0 * * * *';
+        }
+
+        $every = max(1, $this->every);
 
         if ($this->offset <= 0) {
             return $every === 1 ? '* * * * *' : '*/'.$every.' * * * *';

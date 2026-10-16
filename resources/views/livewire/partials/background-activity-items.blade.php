@@ -66,7 +66,9 @@
                                         <flux:select.option value="{{ $option->value }}">{{ $option->label() }}</flux:select.option>
                                     @endforeach
                                 </flux:select>
-                                @if (in_array($cadence, ['every_n_minutes', 'every_n_hours'], true))
+                                @if ($cadence === 'every_n_minutes')
+                                    <flux:input type="number" wire:model="drafts.{{ $row['wireKey'] }}.every" label="Intervall" min="1" :max="min(59, $definition->maxEvery ?? 59)" />
+                                @elseif ($cadence === 'every_n_hours')
                                     <flux:input type="number" wire:model="drafts.{{ $row['wireKey'] }}.every" label="Intervall" min="1" />
                                 @endif
                                 @if ($cadence === 'every_n_minutes' && $definition->allowsOffset)
