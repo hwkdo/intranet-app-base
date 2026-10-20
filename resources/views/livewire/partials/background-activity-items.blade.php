@@ -125,6 +125,12 @@
                         </ul>
                     @endif
 
+                    @if ($row['lastOutput'])
+                        <flux:callout heading="Ausgabe des letzten Laufs">
+                            <pre class="whitespace-pre-wrap font-sans text-sm">{{ $row['lastOutput'] }}</pre>
+                        </flux:callout>
+                    @endif
+
                     @if ($row['lastException'])
                         <flux:callout variant="danger" heading="Letzter Fehler">{{ $row['lastException'] }}</flux:callout>
                     @endif

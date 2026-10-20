@@ -23,6 +23,7 @@ use Hwkdo\IntranetAppBase\Livewire\TourTrigger;
 use Hwkdo\IntranetAppBase\Services\AppPackageVersionService;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityCatalog;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityConfigStore;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityOutput;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityRegistrar;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityRunRecorder;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityRunStore;
@@ -119,6 +120,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(BackgroundActivityRunStore::class);
         $this->app->singleton(BackgroundActivityRegistrar::class);
         $this->app->singleton(BackgroundActivityRunRecorder::class);
+        $this->app->singleton(BackgroundActivityOutput::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(

@@ -48,14 +48,17 @@ class BackgroundActivityRunRecorder
         unset($this->commandStartedAt[$event->command]);
         $duration = $started !== null ? (int) round((microtime(true) - $started) * 1000) : null;
         $scheduled = app()->runningConsoleCommand('schedule:run') || app()->runningConsoleCommand('schedule:work');
+        $output = app(BackgroundActivityOutput::class)->pull();
+        $failed = ($event->exitCode ?? 0) !== 0;
 
         $this->runs->record(
             activityKey: $definition->key,
-            status: ($event->exitCode ?? 0) === 0 ? BackgroundActivityRunStatus::Success : BackgroundActivityRunStatus::Failed,
+            status: $failed ? BackgroundActivityRunStatus::Failed : BackgroundActivityRunStatus::Success,
             trigger: $scheduled ? BackgroundActivityTrigger::Schedule : BackgroundActivityTrigger::Manual,
             durationMs: $duration,
-            exception: ($event->exitCode ?? 0) === 0 ? null : 'Exit code '.$event->exitCode,
+            exception: $failed && $output === null ? 'Exit code '.$event->exitCode : null,
             startedAt: $started !== null ? now()->subMilliseconds($duration ?? 0) : null,
+            output: $output,
         );
     }
 

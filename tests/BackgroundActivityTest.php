@@ -6,11 +6,18 @@ use Hwkdo\IntranetAppBase\Data\BackgroundActivityDefinition;
 use Hwkdo\IntranetAppBase\Data\BackgroundActivityFrequency;
 use Hwkdo\IntranetAppBase\Enums\BackgroundActivityCadence;
 use Hwkdo\IntranetAppBase\Interfaces\BackgroundActivityProviderInterface;
+use Hwkdo\IntranetAppBase\Models\BackgroundActivityRun;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityCatalog;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityConfigStore;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityOutput;
 use Hwkdo\IntranetAppBase\Services\BackgroundActivityRegistrar;
+use Hwkdo\IntranetAppBase\Services\BackgroundActivityRunRecorder;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 test('frequency cron matches the previous scheduler expressions', function (BackgroundActivityFrequency $frequency, string $cron): void {
     expect($frequency->toCron())->toBe($cron);
@@ -109,6 +116,43 @@ test('registrar adds exactly one scheduled event', function (): void {
 
     expect($events)->toHaveCount(1)
         ->and($events->first()->expression)->toBe('*/15 * * * *');
+});
+
+test('command output is stored on the latest run', function (): void {
+    config()->set('database.default', 'sqlite');
+    config()->set('database.connections.sqlite', [
+        'driver' => 'sqlite',
+        'database' => ':memory:',
+        'prefix' => '',
+        'foreign_key_constraints' => true,
+    ]);
+
+    DB::purge('sqlite');
+
+    $migration = include dirname(__DIR__).'/database/migrations/2026_10_15_100000_create_intranet_background_activity_tables.php';
+    $migration->up();
+
+    config([
+        'intranet-app-base.background_activity_providers' => [BackgroundActivityTestProvider::class],
+    ]);
+
+    $this->app->forgetInstance(BackgroundActivityCatalog::class);
+    $this->app->forgetInstance(BackgroundActivityRunRecorder::class);
+    $this->app->singleton(BackgroundActivityOutput::class);
+
+    $input = new ArrayInput([]);
+    $output = new BufferedOutput;
+    $recorder = app(BackgroundActivityRunRecorder::class);
+
+    app(BackgroundActivityOutput::class)->remember("Seiten gelöscht: 2\nSeiten unverändert: 4");
+    $recorder->onCommandStarting(new CommandStarting('background-activity:test', $input, $output));
+    $recorder->onCommandFinished(new CommandFinished('background-activity:test', $input, $output, 0));
+
+    $run = BackgroundActivityRun::query()->where('activity_key', 'base.test-activity')->first();
+
+    expect($run)->not->toBeNull()
+        ->and($run->exception)->toBeNull()
+        ->and($run->meta['output'])->toBe("Seiten gelöscht: 2\nSeiten unverändert: 4");
 });
 
 final class BackgroundActivityTestProvider implements BackgroundActivityProviderInterface

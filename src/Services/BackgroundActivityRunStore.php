@@ -26,6 +26,7 @@ class BackgroundActivityRunStore
         ?int $durationMs = null,
         ?array $meta = null,
         ?\DateTimeInterface $startedAt = null,
+        ?string $output = null,
     ): void {
         if (! $this->tableReady()) {
             return;
@@ -35,6 +36,11 @@ class BackgroundActivityRunStore
             $this->recordNotificationDelivery($activityKey, $status, $channel, $exception);
 
             return;
+        }
+
+        if (is_string($output) && trim($output) !== '') {
+            $meta ??= [];
+            $meta['output'] = mb_substr(trim($output), 0, 4000);
         }
 
         $finished = now();
