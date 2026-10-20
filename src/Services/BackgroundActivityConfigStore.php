@@ -20,7 +20,7 @@ class BackgroundActivityConfigStore
         $row = $this->row($definition->key);
 
         if ($row === null) {
-            return $definition->defaultEnabled;
+            return $this->enabledWithoutStoredConfig($definition);
         }
 
         return $row->enabled;
@@ -110,6 +110,19 @@ class BackgroundActivityConfigStore
                 'parameters' => $parameters,
             ],
         );
+    }
+
+    /**
+     * Staging startet neue Zeitpläne aus. Eine gespeicherte Zeile bleibt davon unberührt,
+     * Production nutzt defaultEnabled.
+     */
+    private function enabledWithoutStoredConfig(BackgroundActivityDefinition $definition): bool
+    {
+        if (app()->environment('staging')) {
+            return false;
+        }
+
+        return $definition->defaultEnabled;
     }
 
     private function row(string $key): ?BackgroundActivityConfig
