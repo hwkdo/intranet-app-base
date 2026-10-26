@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Hwkdo\IntranetAppBase\Services\McpServerService;
 use Hwkdo\IntranetAppBase\Support\AiUsage;
 use Hwkdo\OpenwebuiApiLaravel\Services\OpenWebUiUserService;
@@ -47,13 +48,23 @@ new class extends Component
     public bool $injectTemporalContext = true;
 
     /**
+     * Prompt-Vorschläge für den leeren Chat (klickbar, werden direkt gesendet).
+     *
+     * @var list<string>
+     */
+    public array $suggestions = [];
+
+    /** Anzeigename der App im Chat-Header. */
+    public ?string $appName = null;
+
+    /**
      * Immer der OpenAI-kompatible Chat-Completions-Client (llama.cpp über Open WebUI).
      *
      * @var string|Provider|null
      */
     public string|Provider|null $provider = null;
 
-    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true): void
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true, $suggestions = null): void
     {
         abort_unless(AiUsage::allowed(), 403);
 
@@ -69,6 +80,30 @@ new class extends Component
             ? trim($additionalSystemPrompt)
             : null;
         $this->provider = 'openwebui-completions';
+        $this->appName = is_string($appIdentifier) && $appIdentifier !== ''
+            ? IntranetAppBase::displayNameForAppIdentifier($appIdentifier)
+            : null;
+        $this->suggestions = is_array($suggestions)
+            ? array_values(array_filter($suggestions, fn ($suggestion): bool => is_string($suggestion) && trim($suggestion) !== ''))
+            : [
+                'Was kannst du für mich tun?',
+                'Fasse die wichtigsten Funktionen dieser App zusammen.',
+                'Welche Informationen brauchst du von mir?',
+            ];
+    }
+
+    public function sendSuggestion(string $suggestion): void
+    {
+        $this->prompt = $suggestion;
+        $this->sendMessage();
+    }
+
+    public function resetChat(): void
+    {
+        $this->messages = [];
+        $this->prompt = '';
+        $this->streamingData = '';
+        $this->isStreaming = false;
     }
 
     private function resolveProvider(): string
@@ -431,206 +466,359 @@ new class extends Component
 
 ?>
 
-<div @class([
-    'flex flex-col w-full',
-    'h-full min-h-0 flex-1' => $embedded,
-])>
-    <flux:card @class([
-        'flex flex-col glass-card',
-        'min-h-0 flex-1 overflow-hidden' => $embedded,
-    ])>
+<div
+    @class([
+        'prism-chat relative isolate flex w-full flex-col overflow-hidden rounded-2xl border border-blue-100/80 bg-white/75 shadow-xl shadow-blue-950/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30',
+        'h-full min-h-0 flex-1' => $embedded,
+        'h-[min(78dvh,56rem)] min-h-[32rem]' => ! $embedded,
+    ])
+    x-data="{
+        atBottom: true,
+        scrollToBottom(smooth = true) {
+            const scroller = this.$refs.scroller;
+            scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+        },
+        updateAtBottom() {
+            const scroller = this.$refs.scroller;
+            this.atBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 80;
+        },
+        init() {
+            this.$nextTick(() => this.scrollToBottom(false));
+            new MutationObserver(() => {
+                if (this.atBottom) {
+                    this.scrollToBottom(false);
+                }
+            }).observe(this.$refs.scroller, { childList: true, subtree: true, characterData: true });
+        },
+    }"
+>
+    @assets
+        <style>
+            .prism-chat-message { animation: prism-chat-in .35s cubic-bezier(.21, 1.02, .73, 1) both; }
+            @keyframes prism-chat-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+            .prism-chat-shimmer {
+                background: linear-gradient(90deg, rgb(100 116 139) 0%, rgb(99 102 241) 50%, rgb(100 116 139) 100%);
+                background-size: 200% 100%;
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+                animation: prism-chat-shimmer 2.2s linear infinite;
+            }
+            .dark .prism-chat-shimmer { background-image: linear-gradient(90deg, rgb(148 163 184) 0%, rgb(199 210 254) 50%, rgb(148 163 184) 100%); }
+            @keyframes prism-chat-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+            @media (prefers-reduced-motion: reduce) {
+                .prism-chat-message, .prism-chat-shimmer { animation: none; }
+            }
+
+            .prism-chat [data-flux-composer] textarea::placeholder { color: rgb(100 116 139); }
+            .dark .prism-chat [data-flux-composer] textarea::placeholder { color: rgb(255 255 255 / .5); }
+            .dark .prism-chat [data-flux-composer] textarea { color: rgb(255 255 255 / .92); }
+
+            .prism-chat-markdown { font-size: .875rem; line-height: 1.7; overflow-wrap: anywhere; color: rgb(30 41 59); }
+            .dark .prism-chat-markdown { color: rgb(226 232 240); }
+            .prism-chat-markdown > * + * { margin-top: .75em; }
+            .prism-chat-markdown > :first-child { margin-top: 0; }
+            .prism-chat-markdown > :last-child { margin-bottom: 0; }
+            .prism-chat-markdown h1, .prism-chat-markdown h2, .prism-chat-markdown h3, .prism-chat-markdown h4 { font-weight: 600; line-height: 1.35; color: rgb(15 23 42); margin-top: 1.25em; }
+            .dark .prism-chat-markdown h1, .dark .prism-chat-markdown h2, .dark .prism-chat-markdown h3, .dark .prism-chat-markdown h4 { color: #fff; }
+            .prism-chat-markdown h1 { font-size: 1.25rem; }
+            .prism-chat-markdown h2 { font-size: 1.125rem; }
+            .prism-chat-markdown h3, .prism-chat-markdown h4 { font-size: 1rem; }
+            .prism-chat-markdown strong { font-weight: 600; color: rgb(15 23 42); }
+            .dark .prism-chat-markdown strong { color: #fff; }
+            .prism-chat-markdown ul, .prism-chat-markdown ol { padding-left: 1.35rem; }
+            .prism-chat-markdown ul { list-style: disc; }
+            .prism-chat-markdown ol { list-style: decimal; }
+            .prism-chat-markdown li + li { margin-top: .3em; }
+            .prism-chat-markdown li > ul, .prism-chat-markdown li > ol { margin-top: .3em; }
+            .prism-chat-markdown li::marker { color: rgb(99 102 241); }
+            .dark .prism-chat-markdown li::marker { color: rgb(165 180 252); }
+            .prism-chat-markdown a { color: rgb(37 99 235); font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: rgb(37 99 235 / .35); transition: text-decoration-color .15s; }
+            .prism-chat-markdown a:hover { text-decoration-color: rgb(37 99 235); }
+            .dark .prism-chat-markdown a { color: rgb(147 197 253); text-decoration-color: rgb(147 197 253 / .4); }
+            .dark .prism-chat-markdown a:hover { text-decoration-color: rgb(147 197 253); }
+            .prism-chat-markdown :not(pre) > code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; padding: .12em .4em; border-radius: .375rem; background: rgb(99 102 241 / .1); color: rgb(67 56 202); }
+            .dark .prism-chat-markdown :not(pre) > code { background: rgb(165 180 252 / .15); color: rgb(199 210 254); }
+            .prism-chat-markdown pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; line-height: 1.6; padding: .9rem 1rem; border-radius: .75rem; overflow-x: auto; background: rgb(15 23 42); color: rgb(226 232 240); border: 1px solid rgb(255 255 255 / .06); }
+            .prism-chat-markdown blockquote { border-left: 3px solid rgb(129 140 248); padding-left: .9rem; color: rgb(71 85 105); font-style: italic; }
+            .dark .prism-chat-markdown blockquote { color: rgb(203 213 225); }
+            .prism-chat-markdown hr { border: 0; border-top: 1px solid rgb(203 213 225 / .7); margin: 1.25em 0; }
+            .dark .prism-chat-markdown hr { border-top-color: rgb(255 255 255 / .12); }
+            .prism-chat-markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: separate; border-spacing: 0; border: 1px solid rgb(203 213 225 / .8); border-radius: .75rem; font-size: .8rem; }
+            .dark .prism-chat-markdown table { border-color: rgb(255 255 255 / .12); }
+            .prism-chat-markdown th, .prism-chat-markdown td { padding: .5rem .75rem; text-align: left; border-bottom: 1px solid rgb(226 232 240); }
+            .dark .prism-chat-markdown th, .dark .prism-chat-markdown td { border-bottom-color: rgb(255 255 255 / .08); }
+            .prism-chat-markdown tr:last-child td { border-bottom: 0; }
+            .prism-chat-markdown th { font-weight: 600; background: rgb(238 242 255); color: rgb(30 41 59); white-space: nowrap; }
+            .dark .prism-chat-markdown th { background: rgb(255 255 255 / .06); color: #fff; }
+            .prism-chat-markdown--compact { font-size: .75rem; line-height: 1.6; color: inherit; }
+        </style>
+    @endassets
+
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div class="absolute -top-32 left-1/2 size-[30rem] -translate-x-1/2 rounded-full bg-linear-to-br from-blue-400/25 via-indigo-400/15 to-transparent blur-3xl dark:from-blue-500/25 dark:via-indigo-500/15"></div>
+        <div class="absolute -right-24 -bottom-40 size-96 rounded-full bg-linear-to-tr from-sky-300/20 via-violet-300/10 to-transparent blur-3xl dark:from-sky-500/10 dark:via-violet-500/10"></div>
+    </div>
+
+    @unless ($embedded)
+        <div class="flex shrink-0 items-center gap-3 border-b border-blue-100/70 px-4 py-3 sm:px-5 dark:border-white/10">
+            <div class="relative shrink-0">
+                <div class="flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-white/30">
+                    <flux:icon.sparkles variant="solid" class="size-5" />
+                </div>
+                <span class="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"></span>
+            </div>
+
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <flux:heading size="lg" class="truncate">KI-Assistent</flux:heading>
+                    @if ($useMcpTools && $appIdentifier)
+                        <flux:badge size="sm" color="indigo" icon="bolt" class="max-sm:hidden">App-Werkzeuge</flux:badge>
+                    @endif
+                </div>
+                <flux:text size="sm" class="truncate">
+                    <span wire:loading.remove wire:target="sendMessage,sendSuggestion,streamResponse">{{ $appName ? $appName.' · ' : '' }}Bereit</span>
+                    <span wire:loading wire:target="sendMessage,sendSuggestion,streamResponse" class="prism-chat-shimmer font-medium">Antwortet …</span>
+                </flux:text>
+            </div>
+
+            @if (! empty($messages))
+                <flux:button
+                    size="sm"
+                    variant="ghost"
+                    icon="pencil-square"
+                    wire:click="resetChat"
+                    wire:loading.attr="disabled"
+                    wire:target="streamResponse"
+                >
+                    <span class="max-sm:hidden">Neuer Chat</span>
+                </flux:button>
+            @endif
+        </div>
+    @endunless
+
+    <div
+        x-ref="scroller"
+        x-on:scroll.passive="updateAtBottom()"
+        class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+    >
         <div @class([
-            'p-4 space-y-4',
-            'flex-1 min-h-0 overflow-y-auto' => $embedded,
-        ]) id="chat-messages">
-            @if (empty($messages) && !$isStreaming)
-                <div class="flex items-center justify-center py-8 text-zinc-500 dark:text-zinc-400">
-                    <flux:text>Stellen Sie eine Frage, um zu beginnen...</flux:text>
+            'mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6',
+            'px-3 py-4' => $embedded,
+            'px-4 py-6 sm:px-6' => ! $embedded,
+        ])>
+            @if (empty($messages) && ! $isStreaming)
+                <div class="flex flex-1 flex-col items-center justify-center py-6 text-center">
+                    <div class="relative mb-6">
+                        <div class="absolute inset-0 animate-pulse rounded-3xl bg-linear-to-br from-blue-500 to-violet-500 opacity-40 blur-2xl"></div>
+                        <div @class([
+                            'relative flex items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-xl shadow-indigo-500/30 ring-1 ring-white/30',
+                            'size-12' => $embedded,
+                            'size-16' => ! $embedded,
+                        ])>
+                            <flux:icon.sparkles variant="solid" :class="$embedded ? 'size-6' : 'size-8'" />
+                        </div>
+                    </div>
+
+                    <h2 @class([
+                        'bg-linear-to-r from-blue-700 via-indigo-600 to-violet-600 bg-clip-text font-semibold tracking-tight text-transparent dark:from-sky-300 dark:via-indigo-200 dark:to-violet-300',
+                        'text-lg' => $embedded,
+                        'text-2xl sm:text-3xl' => ! $embedded,
+                    ])>
+                        Hallo{{ auth()->user()?->vorname ? ' '.auth()->user()->vorname : '' }}!
+                    </h2>
+                    <flux:text class="mt-2 max-w-md">
+                        Wie kann ich Ihnen {{ $appName ? 'in '.$appName.' ' : '' }}helfen?
+                    </flux:text>
+
+                    @if (! empty($suggestions))
+                        <div @class([
+                            'mt-8 grid w-full gap-3',
+                            'sm:grid-cols-2' => ! $embedded,
+                        ])>
+                            @foreach ($suggestions as $suggestion)
+                                <button
+                                    type="button"
+                                    wire:key="prism-suggestion-{{ $loop->index }}"
+                                    wire:click="sendSuggestion(@js($suggestion))"
+                                    x-on:click="atBottom = true"
+                                    class="group flex items-start gap-3 rounded-xl border border-blue-100 bg-white/80 p-3.5 text-left text-sm text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-500/10 focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:bg-white/10"
+                                >
+                                    <flux:icon.chat-bubble-left-ellipsis class="mt-0.5 size-4 shrink-0 text-indigo-500 dark:text-indigo-300" />
+                                    <span class="flex-1">{{ $suggestion }}</span>
+                                    <flux:icon.arrow-up-right class="mt-0.5 size-4 shrink-0 text-indigo-400 opacity-0 transition group-hover:opacity-100" />
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             @else
                 @foreach ($messages as $message)
-                    <div class="flex gap-3 {{ $message['role'] === 'user' ? 'justify-end' : 'justify-start' }}">
-                        @if ($message['role'] === 'user')
-                            <div class="max-w-[80%] rounded-lg p-3 bg-primary-500 text-white">
-                                <flux:text class="whitespace-pre-wrap">{{ $message['content'] }}</flux:text>
+                    @if ($message['role'] === 'user')
+                        <div wire:key="prism-message-{{ $loop->index }}" class="prism-chat-message flex justify-end">
+                            <div class="max-w-[85%] rounded-2xl rounded-br-md bg-linear-to-br from-blue-600 to-indigo-600 px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-md shadow-indigo-600/20">{{ $message['content'] }}</div>
+                        </div>
+                    @else
+                        @php($isError = str_starts_with((string) ($message['content'] ?? ''), 'Fehler:'))
+                        <div wire:key="prism-message-{{ $loop->index }}" class="prism-chat-message group flex items-start gap-3" x-data="markdownProcessor">
+                            <div @class([
+                                'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-white shadow-md',
+                                'bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-indigo-500/25' => ! $isError,
+                                'bg-red-500 shadow-red-500/25' => $isError,
+                            ])>
+                                @if ($isError)
+                                    <flux:icon.exclamation-triangle variant="micro" class="size-4" />
+                                @else
+                                    <flux:icon.sparkles variant="micro" class="size-4" />
+                                @endif
                             </div>
-                        @else
-                            <div
-                                class="prose prose-sm max-h-fit max-w-fit min-w-24 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-700"
-                                x-data="markdownProcessor"
-                            >
-                                <flux:heading>AI</flux:heading>
 
-                                <!-- Thinking preview (collapsible) -->
-                                @if (!empty($message['thinking'] ?? ''))
-                                    <div x-show="hasThinking()" class="border-t border-zinc-200 pt-2 dark:border-zinc-600">
-                                        <button
-                                            @click="toggleThinking()"
-                                            class="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                                        >
-                                            <flux:icon.chevron-right x-show="!showThinking" class="h-3 w-3" />
-                                            <flux:icon.chevron-down x-show="showThinking" class="h-3 w-3" />
-                                            🧠
-                                        </button>
-                                        <div x-show="showThinking" x-collapse class="mt-2">
-                                            <div class="rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">
-                                                <article
-                                                    wire:ignore
-                                                    class="prose prose-zinc prose-sm prose-p:m-0 prose-code:font-mono prose-pre:text-xs dark:prose-invert max-w-none break-words"
-                                                    x-html="thinkingHtml"
-                                                ></article>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="min-w-0 flex-1 space-y-2">
+                                <span x-ref="raw" class="hidden">{{ json_encode(['text' => $message['content'] ?? '', 'thinking' => $message['thinking'] ?? '']) }}</span>
+
+                                @if (! empty($message['thinking'] ?? ''))
+                                    @include('intranet-app-base::livewire.partials.prism-chat-thinking')
                                 @endif
 
-                                <!-- Tool calls display -->
-                                @if (!empty($message['toolCalls'] ?? []))
-                                    <div class="border-t border-zinc-200 pt-2 dark:border-zinc-600">
+                                @if (! empty($message['toolCalls'] ?? []))
+                                    <div class="flex flex-wrap gap-1.5">
                                         @foreach ($message['toolCalls'] as $toolCall)
-                                            <div class="mt-1 flex items-center gap-2 text-xs">
-                                                <flux:icon.wrench-screwdriver class="h-3 w-3 text-blue-500" />
-                                                <span class="font-mono text-blue-600 dark:text-blue-400">{{ $toolCall['name'] ?? 'unknown' }}</span>
-                                            </div>
+                                            <flux:badge size="sm" color="sky" icon="wrench-screwdriver">
+                                                <span class="font-mono text-[11px]">{{ $toolCall['name'] ?? 'unknown' }}</span>
+                                            </flux:badge>
                                         @endforeach
                                     </div>
                                 @endif
 
-                                <!-- Main content -->
-                                <flux:text>
-                                    <span
-                                        x-ref="raw"
-                                        class="hidden"
-                                    >
-                                        {{ json_encode(['text' => $message['content'] ?? '', 'thinking' => $message['thinking'] ?? '']) }}
-                                    </span>
-                                    <article
-                                        wire:ignore
-                                        class="prose prose-zinc prose-sm prose-p:m-0 prose-code:font-mono prose-pre:border prose-pre:border-zinc-200 prose-pre:dark:border-zinc-600 prose-pre:rounded-md prose-pre:p-4 prose-pre:mb-1 prose-pre:bg-zinc-100 prose-pre:dark:bg-zinc-800 prose-pre:text-zinc-900 prose-pre:dark:text-zinc-100 prose-table:border-collapse prose-table:w-full prose-th:border prose-th:border-zinc-300 prose-th:dark:border-zinc-600 prose-th:bg-zinc-100 prose-th:dark:bg-zinc-800 prose-th:px-4 prose-th:py-2 prose-td:border prose-td:border-zinc-300 prose-td:dark:border-zinc-600 prose-td:px-4 prose-td:py-2 dark:prose-invert max-w-none break-words"
-                                        x-html="html"
-                                    ></article>
-                                </flux:text>
+                                <div @class([
+                                    'w-fit max-w-full rounded-2xl rounded-tl-md border px-4 py-3 shadow-sm',
+                                    'border-blue-100/80 bg-white/90 dark:border-white/10 dark:bg-white/5' => ! $isError,
+                                    'border-red-200 bg-red-50/90 dark:border-red-400/30 dark:bg-red-500/10' => $isError,
+                                ])>
+                                    <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
+                                </div>
+
+                                @unless ($isError)
+                                    <div x-data="{ copied: false }" class="flex items-center gap-1 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                                        <flux:button
+                                            size="xs"
+                                            variant="ghost"
+                                            x-on:click="navigator.clipboard.writeText(streamData.text); copied = true; setTimeout(() => copied = false, 1600)"
+                                        >
+                                            <flux:icon.clipboard-document variant="micro" class="size-3.5" x-show="!copied" />
+                                            <flux:icon.check variant="micro" class="size-3.5 text-emerald-500" x-show="copied" x-cloak />
+                                            <span x-text="copied ? 'Kopiert' : 'Kopieren'">Kopieren</span>
+                                        </flux:button>
+                                    </div>
+                                @endunless
                             </div>
-                        @endif
-                    </div>
+                        </div>
+                    @endif
                 @endforeach
 
                 @if ($isStreaming)
-                    <div class="flex gap-3 justify-start">
-                        <div
-                            class="prose prose-sm max-h-fit max-w-fit min-w-24 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-700"
-                            x-data="markdownProcessor"
-                        >
-                            <flux:heading>AI</flux:heading>
+                    <div wire:key="prism-message-streaming" class="prism-chat-message flex items-start gap-3" x-data="markdownProcessor">
+                        <div class="relative mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/25">
+                            <span class="absolute inset-0 animate-ping rounded-lg bg-indigo-400/40 [animation-duration:2s]"></span>
+                            <flux:icon.sparkles variant="micro" class="relative size-4" />
+                        </div>
 
-                            <!-- Thinking indicator -->
-                            <div x-show="isCurrentlyThinking()" class="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                                <div class="flex space-x-1">
-                                    <div class="h-1 w-1 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]"></div>
-                                    <div class="h-1 w-1 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]"></div>
-                                    <div class="h-1 w-1 animate-bounce rounded-full bg-zinc-400"></div>
-                                </div>
-                                <span class="text-sm">Thinking...</span>
+                        <div class="min-w-0 flex-1 space-y-2">
+                            <span x-ref="raw" class="hidden" wire:stream="streamingData" wire:replace>{{ $streamingData ?: '{}' }}</span>
+
+                            <div x-show="!streamData.text" class="flex h-8 items-center gap-2.5 text-sm">
+                                <span class="flex items-center gap-1">
+                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.3s] dark:bg-indigo-300"></span>
+                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.15s] dark:bg-indigo-300"></span>
+                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 dark:bg-indigo-300"></span>
+                                </span>
+                                <span class="prism-chat-shimmer font-medium" x-text="hasToolCalls() ? 'Nutzt App-Werkzeuge …' : (hasThinking() ? 'Denkt nach …' : 'Schreibt …')">Schreibt …</span>
                             </div>
 
-                            <!-- Tool usage indicator -->
-                            <div x-show="isCurrentlyUsingTools()" class="flex items-center gap-2 text-blue-500 dark:text-blue-400">
-                                <flux:icon.wrench-screwdriver class="h-4 w-4 animate-spin" />
-                                <span class="text-sm">Using tools...</span>
-                            </div>
+                            @include('intranet-app-base::livewire.partials.prism-chat-thinking')
 
-                            <!-- Thinking preview (collapsible) -->
-                            <div x-show="hasThinking()" class="border-t border-zinc-200 pt-2 dark:border-zinc-600">
-                                <button
-                                    @click="toggleThinking()"
-                                    class="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                                >
-                                    <flux:icon.chevron-right x-show="!showThinking" class="h-3 w-3" />
-                                    <flux:icon.chevron-down x-show="showThinking" class="h-3 w-3" />
-                                    🧠
-                                </button>
-                                <div x-show="showThinking" x-collapse class="mt-2">
-                                    <div class="rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800">
-                                        <article
-                                            wire:ignore
-                                            class="prose prose-zinc prose-sm prose-p:m-0 prose-code:font-mono prose-pre:text-xs dark:prose-invert max-w-none break-words"
-                                            x-html="thinkingHtml"
-                                        ></article>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tool calls display -->
-                            <div x-show="hasToolCalls()" class="border-t border-zinc-200 pt-2 dark:border-zinc-600">
-                                <template x-for="toolCall in streamData.toolCalls" :key="toolCall.id">
-                                    <div class="mt-1 flex items-center gap-2 text-xs">
-                                        <flux:icon.wrench-screwdriver class="h-3 w-3 text-blue-500" />
-                                        <span x-text="toolCall.name" class="font-mono text-blue-600 dark:text-blue-400"></span>
-                                    </div>
+                            <div x-show="hasToolCalls()" x-cloak class="flex flex-wrap gap-1.5">
+                                <template x-for="(toolCall, index) in streamData.toolCalls" :key="index">
+                                    <flux:badge size="sm" color="sky" icon="wrench-screwdriver">
+                                        <span class="font-mono text-[11px]" x-text="toolCall.name"></span>
+                                    </flux:badge>
                                 </template>
                             </div>
 
-                            <!-- Main content -->
-                            <flux:text>
-                                <span
-                                    x-ref="raw"
-                                    class="hidden"
-                                    wire:stream="streamingData"
-                                    wire:replace
-                                >
-                                    {{ $streamingData ?: '{}' }}
-                                </span>
-                                <article
-                                    wire:ignore
-                                    class="prose prose-zinc prose-sm prose-p:m-0 prose-code:font-mono prose-pre:border prose-pre:border-zinc-200 prose-pre:dark:border-zinc-600 prose-pre:rounded-md prose-pre:p-4 prose-pre:mb-1 prose-pre:bg-zinc-100 prose-pre:dark:bg-zinc-800 prose-pre:text-zinc-900 prose-pre:dark:text-zinc-100 prose-table:border-collapse prose-table:w-full prose-th:border prose-th:border-zinc-300 prose-th:dark:border-zinc-600 prose-th:bg-zinc-100 prose-th:dark:bg-zinc-800 prose-th:px-4 prose-th:py-2 prose-td:border prose-td:border-zinc-300 prose-td:dark:border-zinc-600 prose-td:px-4 prose-td:py-2 dark:prose-invert max-w-none break-words"
-                                    x-html="html"
-                                    x-show="html.length > 0"
-                                ></article>
-                                @if (empty($streamingData))
-                                    <div class="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-                                        <flux:icon.loading class="size-4 animate-spin" />
-                                        <flux:text>Antwort wird geladen...</flux:text>
-                                    </div>
-                                @endif
-                            </flux:text>
+                            <div x-show="html.length > 0" x-cloak class="w-fit max-w-full rounded-2xl rounded-tl-md border border-blue-100/80 bg-white/90 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5">
+                                <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
+                            </div>
                         </div>
                     </div>
                 @endif
             @endif
         </div>
+    </div>
 
-        <div @class([
-            'border-t border-zinc-200 dark:border-zinc-700 p-4',
-            'shrink-0' => $embedded,
-        ])>
-            <form wire:submit="sendMessage" class="flex gap-2">
-                <flux:input
-                    wire:model="prompt"
-                    placeholder="Nachricht eingeben..."
-                    class="flex-1"
-                    wire:keydown.enter.prevent="sendMessage"
-                />
-                <flux:button
-                    type="submit"
-                    variant="primary"
-                    wire:loading.attr="disabled"
-                    wire:target="sendMessage"
-                >
-                    <span wire:loading.remove>Senden</span>
-                    <span wire:loading>Senden...</span>
-                </flux:button>
-            </form>
-        </div>
-    </flux:card>
+    <div class="relative h-0">
+        <button
+            type="button"
+            x-show="!atBottom"
+            x-cloak
+            x-transition.opacity.scale.90
+            x-on:click="scrollToBottom()"
+            aria-label="Zum Ende springen"
+            class="absolute -top-12 left-1/2 z-20 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-blue-100 bg-white/95 text-slate-600 shadow-lg backdrop-blur transition hover:text-indigo-600 dark:border-white/10 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:text-white"
+        >
+            <flux:icon.arrow-down variant="micro" class="size-4" />
+        </button>
+    </div>
+
+    <div @class([
+        'shrink-0',
+        'px-2 pt-1 pb-2' => $embedded,
+        'px-3 pt-2 pb-3 sm:px-5 sm:pb-4' => ! $embedded,
+    ])>
+        <form wire:submit="sendMessage" x-on:submit="atBottom = true" class="mx-auto w-full max-w-3xl">
+            <flux:composer
+                wire:model="prompt"
+                submit="enter"
+                :rows="$embedded ? 1 : 2"
+                max-rows="8"
+                :inline="$embedded"
+                label="Nachricht"
+                label:sr-only
+                placeholder="Nachricht an den KI-Assistenten …"
+                class="shadow-lg shadow-blue-950/5 transition focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-500/10 dark:focus-within:border-indigo-400/40"
+            >
+                <x-slot name="actionsLeading">
+                    @if ($embedded && ! empty($messages))
+                        <flux:tooltip content="Neuer Chat">
+                            <flux:button size="sm" variant="subtle" icon="pencil-square" wire:click="resetChat" aria-label="Neuer Chat" />
+                        </flux:tooltip>
+                    @elseif (! $embedded)
+                        <flux:text size="sm" class="flex items-center gap-1.5 px-1 pt-1.5 text-xs max-sm:hidden">
+                            <flux:icon.sparkles variant="micro" class="size-3.5 text-indigo-500 dark:text-indigo-300" />
+                            KI-Antworten können fehlerhaft sein.
+                        </flux:text>
+                    @endif
+                </x-slot>
+
+                <x-slot name="actionsTrailing">
+                    <flux:button
+                        type="submit"
+                        size="sm"
+                        variant="primary"
+                        icon="arrow-up"
+                        aria-label="Senden"
+                        wire:loading.attr="disabled"
+                        wire:target="sendMessage,sendSuggestion,streamResponse"
+                    />
+                </x-slot>
+            </flux:composer>
+            @unless ($embedded)
+                <p class="mt-2 text-center text-[11px] text-slate-500 dark:text-slate-400">
+                    <kbd class="rounded border border-slate-300/80 bg-white/70 px-1 font-sans dark:border-white/15 dark:bg-white/5">Enter</kbd> senden
+                    · <kbd class="rounded border border-slate-300/80 bg-white/70 px-1 font-sans dark:border-white/15 dark:bg-white/5">Shift</kbd> + <kbd class="rounded border border-slate-300/80 bg-white/70 px-1 font-sans dark:border-white/15 dark:bg-white/5">Enter</kbd> neue Zeile
+                </p>
+            @endunless
+        </form>
+    </div>
 </div>
-
-<script>
-    document.addEventListener('livewire:initialized', () => {
-        const container = document.getElementById('chat-messages');
-        Livewire.hook('commit', ({ succeed }) => {
-            succeed(() => {
-                if (container) container.scrollTop = container.scrollHeight;
-            });
-        });
-    });
-</script>
