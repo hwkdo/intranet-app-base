@@ -46,7 +46,11 @@ new class extends Component
     /** Relative Datumsangaben («morgen») per aktuellem Zeitbezug auflösen. */
     public bool $injectTemporalContext = true;
 
-    /** @var string|Provider|null Von Livewire gesetzt (z. B. 'openwebui-completions'), wird bei Nutzung normalisiert. */
+    /**
+     * Immer der OpenAI-kompatible Chat-Completions-Client (llama.cpp über Open WebUI).
+     *
+     * @var string|Provider|null
+     */
     public string|Provider|null $provider = null;
 
     public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true): void
@@ -55,7 +59,7 @@ new class extends Component
 
         $this->model = $model ?? config('openwebui-api-laravel.default_model', 'gpt-4o-mini');
         $this->apiKey = $apiKey;
-        $this->baseUrl = $baseUrl ?? config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api');
+        $this->baseUrl = $this->normalizeBaseUrl($baseUrl);
         $this->useMcpTools = $useMcpTools;
         $this->appIdentifier = $appIdentifier;
         $this->injectOpenWebUiUserSystemPrompt = (bool) $injectOpenWebUiUserSystemPrompt;
@@ -64,29 +68,25 @@ new class extends Component
         $this->additionalSystemPrompt = is_string($additionalSystemPrompt) && trim($additionalSystemPrompt) !== ''
             ? trim($additionalSystemPrompt)
             : null;
-        $this->provider = $this->normalizeProvider($this->provider ?? $provider);
+        $this->provider = 'openwebui-completions';
     }
 
-    private function resolveProvider(): Provider
+    private function resolveProvider(): string
     {
-        return $this->provider instanceof Provider
-            ? $this->provider
-            : $this->normalizeProvider($this->provider);
+        return 'openwebui-completions';
     }
 
-    private function normalizeProvider(mixed $provider): Provider
+    private function normalizeBaseUrl(mixed $baseUrl): string
     {
-        if ($provider instanceof Provider) {
-            return $provider;
-        }
-        if ($provider === 'openwebui-completions') {
-            return Provider::Ollama;
-        }
-        if (is_string($provider)) {
-            return Provider::tryFrom($provider) ?? Provider::Ollama;
+        $completionsUrl = rtrim((string) config('openwebui-api-laravel.base_api_url', 'https://chat.ai.hwk-do.com/api'), '/');
+        $ollamaUrl = rtrim((string) config('openwebui-api-laravel.base_api_url_ollama', ''), '/');
+        $given = is_string($baseUrl) ? rtrim(trim($baseUrl), '/') : '';
+
+        if ($given === '' || ($ollamaUrl !== '' && $given === $ollamaUrl)) {
+            return $completionsUrl;
         }
 
-        return Provider::Ollama;
+        return $given;
     }
 
     private function resolveSystemPrompt(): string
@@ -186,8 +186,7 @@ new class extends Component
 
         try {
 
-            // Configure Prism with OpenWebUI Completions provider
-            $baseUrl = rtrim($this->baseUrl, '/');
+            $baseUrl = $this->normalizeBaseUrl($this->baseUrl);
 
             $prismRequest = Prism::text()
                 ->using($this->resolveProvider(), $this->model, [
