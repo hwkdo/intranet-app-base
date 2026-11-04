@@ -17,6 +17,12 @@ interface IntranetBaseAiConfigSourceInterface
 
     public function imageModel(): ?string;
 
+    public function imageEditModel(): ?string;
+
+    public function classificationProvider(): AiProvider;
+
+    public function classificationModel(): ?string;
+
     public function documentParseEngine(): DocumentParseEngine;
 
     public function documentParseTier(): string;

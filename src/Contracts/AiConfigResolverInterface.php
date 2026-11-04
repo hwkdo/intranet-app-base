@@ -11,6 +11,8 @@ interface AiConfigResolverInterface
 {
     public function resolve(string $appIdentifier, AiCapability $capability): ResolvedAiConfig;
 
+    public function resolveImageEditModel(string $appIdentifier): ?string;
+
     public function resolveWithContext(
         string $appIdentifier,
         AiCapability $capability,

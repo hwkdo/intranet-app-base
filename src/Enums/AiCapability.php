@@ -10,11 +10,13 @@ enum AiCapability: string
     case Image = 'image';
     case Vision = 'vision';
     case Agent = 'agent';
+    case Classification = 'classification';
 
     public function configDefaultKey(): string
     {
         return match ($this) {
             self::Image => 'default_for_images',
+            self::Classification => 'default_for_classification',
             default => 'default',
         };
     }
@@ -23,6 +25,7 @@ enum AiCapability: string
     {
         return match ($this) {
             self::Image => 'image',
+            self::Classification => 'classification',
             default => 'text',
         };
     }

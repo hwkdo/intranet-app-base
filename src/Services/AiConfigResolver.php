@@ -31,6 +31,27 @@ class AiConfigResolver implements AiConfigResolverInterface
         );
     }
 
+    public function resolveImageEditModel(string $appIdentifier): ?string
+    {
+        $appSettings = $this->appSettingsSource->forApp($appIdentifier);
+        $override = $appSettings?->imageEditModelOverride();
+
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override);
+        }
+
+        if ($appSettings?->imageProviderOverride() instanceof AiProvider) {
+            return $this->imageEditDefaultFor($appSettings->imageProviderOverride());
+        }
+
+        $baseModel = $this->baseConfig->imageEditModel();
+        if (is_string($baseModel) && trim($baseModel) !== '') {
+            return trim($baseModel);
+        }
+
+        return $this->imageEditDefaultFor($this->baseConfig->imageProvider());
+    }
+
     public function resolveWithContext(
         string $appIdentifier,
         AiCapability $capability,
@@ -78,6 +99,7 @@ class AiConfigResolver implements AiConfigResolverInterface
 
         return match ($capability) {
             AiCapability::Image => $appSettings->imageProviderOverride(),
+            AiCapability::Classification => $appSettings->classificationProviderOverride(),
             default => $appSettings->textProviderOverride(),
         };
     }
@@ -90,6 +112,7 @@ class AiConfigResolver implements AiConfigResolverInterface
 
         return match ($capability) {
             AiCapability::Image => $appSettings->imageModelOverride(),
+            AiCapability::Classification => $appSettings->classificationModelOverride(),
             default => $appSettings->textModelOverride(),
         };
     }
@@ -98,6 +121,7 @@ class AiConfigResolver implements AiConfigResolverInterface
     {
         return match ($capability) {
             AiCapability::Image => $this->baseConfig->imageProvider(),
+            AiCapability::Classification => $this->baseConfig->classificationProvider(),
             default => $this->baseConfig->textProvider(),
         };
     }
@@ -106,6 +130,7 @@ class AiConfigResolver implements AiConfigResolverInterface
     {
         return match ($capability) {
             AiCapability::Image => $this->baseConfig->imageModel(),
+            AiCapability::Classification => $this->baseConfig->classificationModel(),
             default => $this->baseConfig->textModel(),
         };
     }
@@ -115,6 +140,17 @@ class AiConfigResolver implements AiConfigResolverInterface
         $key = $this->config->get('ai.'.$capability->configDefaultKey(), 'openai');
 
         return AiProvider::tryFrom((string) $key) ?? AiProvider::OpenAi;
+    }
+
+    private function imageEditDefaultFor(AiProvider $provider): ?string
+    {
+        $model = $this->config->get("ai.providers.{$provider->value}.models.image.edit");
+
+        if (is_string($model) && trim($model) !== '') {
+            return trim($model);
+        }
+
+        return null;
     }
 
     private function defaultModelFor(AiProvider $provider, AiCapability $capability): ?string
