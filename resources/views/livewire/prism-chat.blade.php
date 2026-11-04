@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\LightRagQueryClient;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Hwkdo\IntranetAppBase\Services\McpServerService;
 use Hwkdo\IntranetAppBase\Support\AiUsage;
@@ -57,6 +58,11 @@ new class extends Component
     /** Anzeigename der App im Chat-Header. */
     public ?string $appName = null;
 
+    /** LightRAG-Instanz, deren Kontext vor der Antwort geholt wird. */
+    public ?string $lightragInstance = null;
+
+    private ?string $lightRagTurnContext = null;
+
     /**
      * Immer der OpenAI-kompatible Chat-Completions-Client (llama.cpp über Open WebUI).
      *
@@ -64,7 +70,7 @@ new class extends Component
      */
     public string|Provider|null $provider = null;
 
-    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true, $suggestions = null): void
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true, $suggestions = null, $appName = null, $lightragInstance = null): void
     {
         abort_unless(AiUsage::allowed(), 403);
 
@@ -80,9 +86,15 @@ new class extends Component
             ? trim($additionalSystemPrompt)
             : null;
         $this->provider = 'openwebui-completions';
-        $this->appName = is_string($appIdentifier) && $appIdentifier !== ''
-            ? IntranetAppBase::displayNameForAppIdentifier($appIdentifier)
+        $this->lightragInstance = is_string($lightragInstance) && trim($lightragInstance) !== ''
+            ? trim($lightragInstance)
             : null;
+        $explicitAppName = is_string($appName) ? trim($appName) : '';
+        $this->appName = $explicitAppName !== ''
+            ? $explicitAppName
+            : (is_string($appIdentifier) && $appIdentifier !== ''
+                ? IntranetAppBase::displayNameForAppIdentifier($appIdentifier)
+                : null);
         $this->suggestions = is_array($suggestions)
             ? array_values(array_filter($suggestions, fn ($suggestion): bool => is_string($suggestion) && trim($suggestion) !== ''))
             : [
@@ -144,6 +156,12 @@ new class extends Component
 
         if ($this->additionalSystemPrompt !== null) {
             $parts[] = $this->additionalSystemPrompt;
+        }
+
+        if ($this->lightRagTurnContext !== null) {
+            $parts[] = $this->lightRagTurnContext === ''
+                ? 'Zur Frage gibt es in den Dokumenten keinen Kontext. Sage das und erfinde keine Dokumentinhalte.'
+                : "Beantworte die Frage nur mit dem folgenden Kontext aus den Dokumenten. Wenn der Kontext nicht reicht, sage das.\n\n".$this->lightRagTurnContext;
         }
 
         return implode("\n\n", array_filter($parts));
@@ -219,7 +237,19 @@ new class extends Component
             }
         }
 
+        $references = [];
+
         try {
+            if ($this->lightragInstance !== null) {
+                $this->authorize('see-admin-tests');
+                $retrieved = app(LightRagQueryClient::class)->context(
+                    $this->lightragInstance,
+                    $this->latestUserQuestion(),
+                    $this->lightRagHistory(),
+                );
+                $this->lightRagTurnContext = $retrieved['context'];
+                $references = $retrieved['references'];
+            }
 
             $baseUrl = $this->normalizeBaseUrl($this->baseUrl);
 
@@ -372,6 +402,7 @@ new class extends Component
                     'toolCalls' => $streamData['toolCalls'],
                     'toolResults' => $streamData['toolResults'],
                     'thinking' => $streamData['thinking'],
+                    'references' => $references,
                 ];
             }
 
@@ -406,6 +437,7 @@ new class extends Component
                 'toolCalls' => [],
                 'toolResults' => [],
                 'thinking' => '',
+                'references' => $references,
             ];
 
             // Also send via stream to ensure frontend receives it
@@ -461,6 +493,47 @@ new class extends Component
         }
 
         return '';
+    }
+
+    private function latestUserQuestion(): string
+    {
+        for ($index = count($this->messages) - 1; $index >= 0; $index--) {
+            if (($this->messages[$index]['role'] ?? '') === 'user') {
+                return trim((string) ($this->messages[$index]['content'] ?? ''));
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * @return list<array{role: string, content: string}>
+     */
+    private function lightRagHistory(): array
+    {
+        $lastUserIndex = null;
+        foreach ($this->messages as $index => $message) {
+            if (($message['role'] ?? '') === 'user') {
+                $lastUserIndex = $index;
+            }
+        }
+
+        $history = [];
+        foreach ($this->messages as $index => $message) {
+            if ($index === $lastUserIndex) {
+                continue;
+            }
+
+            $role = $message['role'] ?? '';
+            $content = trim((string) ($message['content'] ?? ''));
+            if (! in_array($role, ['user', 'assistant'], true) || $content === '') {
+                continue;
+            }
+
+            $history[] = ['role' => $role, 'content' => $content];
+        }
+
+        return $history;
     }
 };
 
@@ -574,13 +647,15 @@ new class extends Component
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                     <flux:heading size="lg" class="truncate">KI-Assistent</flux:heading>
-                    @if ($useMcpTools && $appIdentifier)
+                    @if ($lightragInstance)
+                        <flux:badge size="sm" color="green" icon="circle-stack" class="max-sm:hidden">LightRAG</flux:badge>
+                    @elseif ($useMcpTools && $appIdentifier)
                         <flux:badge size="sm" color="indigo" icon="bolt" class="max-sm:hidden">App-Werkzeuge</flux:badge>
                     @endif
                 </div>
                 <flux:text size="sm" class="truncate">
                     <span wire:loading.remove wire:target="sendMessage,sendSuggestion,streamResponse">{{ $appName ? $appName.' · ' : '' }}Bereit</span>
-                    <span wire:loading wire:target="sendMessage,sendSuggestion,streamResponse" class="prism-chat-shimmer font-medium">Antwortet …</span>
+                    <span wire:loading wire:target="sendMessage,sendSuggestion,streamResponse" class="prism-chat-shimmer font-medium">{{ $lightragInstance ? 'Liest Dokumente …' : 'Antwortet …' }}</span>
                 </flux:text>
             </div>
 
@@ -699,6 +774,14 @@ new class extends Component
                                 ])>
                                     <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
                                 </div>
+
+                                @if (! empty($message['references'] ?? []))
+                                    <div class="flex flex-col gap-1">
+                                        @foreach ($message['references'] as $reference)
+                                            <span class="break-all font-mono text-xs text-slate-500 dark:text-slate-400">{{ $reference['file_path'] }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
 
                                 @unless ($isError)
                                     <div x-data="{ copied: false }" class="flex items-center gap-1 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
