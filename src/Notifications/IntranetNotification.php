@@ -45,6 +45,18 @@ abstract class IntranetNotification extends Notification implements ShouldQueue
     }
 
     /**
+     * Mail läuft über eine eigene Queue, damit das SMTP-Rate-Limit die übrigen Jobs nicht blockiert.
+     *
+     * @return array<string, string>
+     */
+    public function viaQueues(): array
+    {
+        return [
+            'mail' => 'mail',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function inboxPayload(
