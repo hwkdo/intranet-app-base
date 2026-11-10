@@ -31,8 +31,11 @@
                 @php
                     $checked = in_array($channelKey, $pref['channels'] ?? [], true);
                     $unavailable = $this->channelDisabledForUser($channelKey);
-                    $disabled = $unavailable && ! $checked;
-                    $disabledReason = $unavailable ? $this->channelDisabledReason($channelKey) : null;
+                    $required = $definition->channelIsRequired($channelKey);
+                    $disabled = $required ? $checked : ($unavailable && ! $checked);
+                    $disabledReason = $required
+                        ? 'Dieser Kanal ist verpflichtend und kann nicht abgewählt werden.'
+                        : ($unavailable ? $this->channelDisabledReason($channelKey) : null);
                     $channelLabel = $this->channelOptions[$channelKey] ?? $channelKey;
                 @endphp
                 @if($disabledReason)

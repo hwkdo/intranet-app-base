@@ -7,6 +7,9 @@ namespace Hwkdo\IntranetAppBase\Services;
 use Hwkdo\IntranetAppBase\Data\NotificationTypeDefinition;
 use Hwkdo\IntranetAppBase\Enums\NotificationChannelKey;
 use Hwkdo\IntranetAppBase\Models\IntranetNotificationPreference;
+use Hwkdo\IntranetAppTeamsBot\Channels\TeamsChannel;
+use Hwkdo\IntranetAppTeamsBot\Enums\TeamsBotConversationStatus;
+use Hwkdo\IntranetAppTeamsBot\Models\TeamsBotConversation;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Schema;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -102,7 +105,7 @@ class NotificationPreferenceResolver
         if ($stored === null) {
             return [
                 'enabled' => $defaultEnabled,
-                'channels' => $defaultChannels,
+                'channels' => $this->enforceRequiredChannels($defaultChannels, $definition),
             ];
         }
 
@@ -115,13 +118,13 @@ class NotificationPreferenceResolver
 
             return [
                 'enabled' => true,
-                'channels' => $channels,
+                'channels' => $this->enforceRequiredChannels($channels, $definition),
             ];
         }
 
         return [
             'enabled' => (bool) $stored->enabled,
-            'channels' => $channels,
+            'channels' => $this->enforceRequiredChannels($channels, $definition),
         ];
     }
 
@@ -150,6 +153,8 @@ class NotificationPreferenceResolver
             );
         }
 
+        $normalizedChannels = $this->enforceRequiredChannels($normalizedChannels, $definition);
+
         IntranetNotificationPreference::query()->updateOrCreate(
             [
                 'user_id' => $userId,
@@ -173,7 +178,7 @@ class NotificationPreferenceResolver
 
     public function teamsAvailableFor(Authenticatable $notifiable): bool
     {
-        if (! class_exists(\Hwkdo\IntranetAppTeamsBot\Channels\TeamsChannel::class)) {
+        if (! class_exists(TeamsChannel::class)) {
             return false;
         }
 
@@ -187,15 +192,15 @@ class NotificationPreferenceResolver
             return false;
         }
 
-        if (! class_exists(\Hwkdo\IntranetAppTeamsBot\Models\TeamsBotConversation::class)) {
+        if (! class_exists(TeamsBotConversation::class)) {
             return false;
         }
 
-        return \Hwkdo\IntranetAppTeamsBot\Models\TeamsBotConversation::query()
+        return TeamsBotConversation::query()
             ->whereRaw('LOWER(azure_user_id) = ?', [strtolower($azureUserId)])
             ->where(
                 'status',
-                \Hwkdo\IntranetAppTeamsBot\Enums\TeamsBotConversationStatus::Active,
+                TeamsBotConversationStatus::Active,
             )
             ->exists();
     }
@@ -252,6 +257,24 @@ class NotificationPreferenceResolver
 
     /**
      * @param  list<string>  $channels
+     * @return list<string>
+     */
+    private function enforceRequiredChannels(array $channels, NotificationTypeDefinition $definition): array
+    {
+        $required = $this->normalizeChannels(
+            $definition->requiredChannels,
+            $definition->resolvedAvailableChannels(),
+        );
+
+        if ($required === []) {
+            return $channels;
+        }
+
+        return array_values(array_unique([...$channels, ...$required]));
+    }
+
+    /**
+     * @param  list<string>  $channels
      * @param  list<string>  $available
      * @return list<string>
      */
@@ -278,8 +301,8 @@ class NotificationPreferenceResolver
             NotificationChannelKey::WebPush->value => class_exists(WebPushChannel::class)
                 ? WebPushChannel::class
                 : null,
-            NotificationChannelKey::Teams->value => class_exists(\Hwkdo\IntranetAppTeamsBot\Channels\TeamsChannel::class)
-                ? \Hwkdo\IntranetAppTeamsBot\Channels\TeamsChannel::class
+            NotificationChannelKey::Teams->value => class_exists(TeamsChannel::class)
+                ? TeamsChannel::class
                 : null,
             default => null,
         };
@@ -291,7 +314,7 @@ class NotificationPreferenceResolver
             'database' => NotificationChannelKey::Inbox->value,
             'mail' => NotificationChannelKey::Mail->value,
             WebPushChannel::class => NotificationChannelKey::WebPush->value,
-            \Hwkdo\IntranetAppTeamsBot\Channels\TeamsChannel::class => NotificationChannelKey::Teams->value,
+            TeamsChannel::class => NotificationChannelKey::Teams->value,
             default => null,
         };
     }

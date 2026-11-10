@@ -10,6 +10,8 @@ use Hwkdo\IntranetAppBase\Enums\NotificationChannelKey;
 use Hwkdo\IntranetAppBase\Notifications\TestNotification;
 use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
 use Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog;
+use Hwkdo\IntranetAppTeamsBot\Services\TeamsBotInstallationService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -97,7 +99,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function groupedTypes(): \Illuminate\Support\Collection
+    public function groupedTypes(): Collection
     {
         $grouped = app(NotificationTypeCatalog::class)->groupedByApp();
 
@@ -121,9 +123,9 @@ class NotificationSettings extends Component
     }
 
     /**
-     * @return \Illuminate\Support\Collection<string, NotificationTypeDefinition>
+     * @return Collection<string, NotificationTypeDefinition>
      */
-    private function definitionsForScope(NotificationTypeCatalog $catalog): \Illuminate\Support\Collection
+    private function definitionsForScope(NotificationTypeCatalog $catalog): Collection
     {
         $definitions = $catalog->all();
 
@@ -140,7 +142,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function filteredGroupedTypes(): \Illuminate\Support\Collection
+    public function filteredGroupedTypes(): Collection
     {
         $term = trim(mb_strtolower($this->searchTerm));
 
@@ -174,7 +176,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function appsGroupedTypes(): \Illuminate\Support\Collection
+    public function appsGroupedTypes(): Collection
     {
         $result = collect();
 
@@ -192,7 +194,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function newsGroupedTypes(): \Illuminate\Support\Collection
+    public function newsGroupedTypes(): Collection
     {
         $result = collect();
 
@@ -210,7 +212,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function newsDefinitions(): \Illuminate\Support\Collection
+    public function newsDefinitions(): Collection
     {
         return $this->newsGroupedTypes
             ->flatten(1)
@@ -228,7 +230,7 @@ class NotificationSettings extends Component
     }
 
     #[Computed]
-    public function pushSubscriptions(): \Illuminate\Support\Collection
+    public function pushSubscriptions(): Collection
     {
         $user = Auth::user();
 
@@ -253,7 +255,7 @@ class NotificationSettings extends Component
     public function teamsBotEnabled(): bool
     {
         return (bool) config('intranet-app-teams-bot.bot.enabled', false)
-            && class_exists(\Hwkdo\IntranetAppTeamsBot\Services\TeamsBotInstallationService::class);
+            && class_exists(TeamsBotInstallationService::class);
     }
 
     #[Computed]
@@ -317,7 +319,7 @@ class NotificationSettings extends Component
         }
 
         try {
-            app(\Hwkdo\IntranetAppTeamsBot\Services\TeamsBotInstallationService::class)
+            app(TeamsBotInstallationService::class)
                 ->installForUserSync(
                     strtolower($azureUserId),
                     $upn,
@@ -457,6 +459,16 @@ class NotificationSettings extends Component
         }
 
         if ($isSelected) {
+            if ($definition->channelIsRequired($channelKey)) {
+                Flux::toast(
+                    heading: 'Pflicht-Kanal',
+                    text: 'Dieser Kanal ist verpflichtend und kann nicht abgewählt werden.',
+                    variant: 'warning',
+                );
+
+                return;
+            }
+
             $channels = array_values(array_filter(
                 $channels,
                 fn (string $channel): bool => $channel !== $channelKey,
