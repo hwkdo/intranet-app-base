@@ -40,8 +40,8 @@ class AiConfigResolver implements AiConfigResolverInterface
             return trim($override);
         }
 
-        if ($appSettings?->imageProviderOverride() instanceof AiProvider) {
-            return $this->imageEditDefaultFor($appSettings->imageProviderOverride());
+        if ($appSettings?->imageEditProviderOverride() instanceof AiProvider) {
+            return $this->imageEditDefaultFor($appSettings->imageEditProviderOverride());
         }
 
         $baseModel = $this->baseConfig->imageEditModel();
@@ -49,7 +49,7 @@ class AiConfigResolver implements AiConfigResolverInterface
             return trim($baseModel);
         }
 
-        return $this->imageEditDefaultFor($this->baseConfig->imageProvider());
+        return $this->imageEditDefaultFor($this->baseConfig->imageEditProvider());
     }
 
     public function resolveWithContext(

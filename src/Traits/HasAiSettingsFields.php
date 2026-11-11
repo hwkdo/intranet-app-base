@@ -15,11 +15,14 @@ trait HasAiSettingsFields
     #[Description('KI-Text-Modell überschreiben (leer = Base- bzw. Provider-Default)')]
     public ?string $aiTextModelOverride = null;
 
-    #[Description('KI-Bild-Provider überschreiben (leer = Intranet-Base-Default)')]
+    #[Description('KI-Generate-Provider überschreiben (leer = Intranet-Base-Default)')]
     public ?AiProvider $aiImageProviderOverride = null;
 
     #[Description('KI-Generate-Modell überschreiben (leer = Base- bzw. Provider-Default)')]
     public ?string $aiImageModelOverride = null;
+
+    #[Description('KI-Edit-Provider überschreiben (leer = Intranet-Base-Default)')]
+    public ?AiProvider $aiImageEditProviderOverride = null;
 
     #[Description('KI-Edit-Modell überschreiben (leer = Base- bzw. Provider-Default)')]
     public ?string $aiImageEditModelOverride = null;
@@ -48,6 +51,11 @@ trait HasAiSettingsFields
     public function imageModelOverride(): ?string
     {
         return $this->blankToNull($this->aiImageModelOverride);
+    }
+
+    public function imageEditProviderOverride(): ?AiProvider
+    {
+        return $this->aiImageEditProviderOverride;
     }
 
     public function imageEditModelOverride(): ?string

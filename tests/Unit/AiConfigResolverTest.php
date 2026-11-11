@@ -38,6 +38,7 @@ class AiConfigResolverTestBaseSource implements IntranetBaseAiConfigSourceInterf
         private readonly ?string $textModel = 'gpt-4o',
         private readonly AiProvider $imageProvider = AiProvider::OpenAi,
         private readonly ?string $imageModel = 'gpt-image-1.5',
+        private readonly AiProvider $imageEditProvider = AiProvider::ComfyUi,
         private readonly ?string $imageEditModel = 'gpt-image-1.5-edit',
         private readonly AiProvider $classificationProvider = AiProvider::Bifrost,
         private readonly ?string $classificationModel = 'openrouter/~typesafe/jev-latest',
@@ -61,6 +62,11 @@ class AiConfigResolverTestBaseSource implements IntranetBaseAiConfigSourceInterf
     public function imageModel(): ?string
     {
         return $this->imageModel;
+    }
+
+    public function imageEditProvider(): AiProvider
+    {
+        return $this->imageEditProvider;
     }
 
     public function imageEditModel(): ?string
@@ -182,14 +188,23 @@ it('prefers an image edit app override', function () {
     expect($resolver->resolveImageEditModel('assets'))->toBe('custom-edit');
 });
 
-it('uses the provider edit default when the app overrides only the image provider', function () {
+it('keeps the base edit model when the app overrides only the generate provider', function () {
     $appSettings = new AiConfigResolverTestAppSettings(
         aiImageProviderOverride: AiProvider::Bifrost,
     );
 
+    $resolver = makeAiConfigResolver(appSettings: $appSettings);
+
+    expect($resolver->resolveImageEditModel('assets'))->toBe('gpt-image-1.5-edit');
+});
+
+it('uses the edit provider default when the app overrides the edit provider', function () {
+    $appSettings = new AiConfigResolverTestAppSettings;
+    $appSettings->aiImageEditProviderOverride = AiProvider::ComfyUi;
+
     $resolver = makeAiConfigResolver(appSettings: $appSettings, aiConfig: [
         'providers' => [
-            'bifrost' => [
+            'comfyui' => [
                 'models' => [
                     'image' => ['edit' => 'qwen-edit'],
                 ],

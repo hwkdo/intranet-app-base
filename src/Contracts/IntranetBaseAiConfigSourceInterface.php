@@ -17,6 +17,8 @@ interface IntranetBaseAiConfigSourceInterface
 
     public function imageModel(): ?string;
 
+    public function imageEditProvider(): AiProvider;
+
     public function imageEditModel(): ?string;
 
     public function classificationProvider(): AiProvider;

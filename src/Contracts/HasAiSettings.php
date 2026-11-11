@@ -16,6 +16,8 @@ interface HasAiSettings
 
     public function imageModelOverride(): ?string;
 
+    public function imageEditProviderOverride(): ?AiProvider;
+
     public function imageEditModelOverride(): ?string;
 
     public function classificationProviderOverride(): ?AiProvider;
