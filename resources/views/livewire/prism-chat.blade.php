@@ -241,7 +241,6 @@ new class extends Component
 
         try {
             if ($this->lightragInstance !== null) {
-                $this->authorize('see-admin-tests');
                 $retrieved = app(LightRagQueryClient::class)->context(
                     $this->lightragInstance,
                     $this->latestUserQuestion(),
