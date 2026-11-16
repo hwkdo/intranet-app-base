@@ -14,8 +14,10 @@ use Hwkdo\IntranetAppBase\Services\SetupCatalog;
 use Hwkdo\IntranetAppBase\Services\TourCatalog;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
+use Throwable;
 
 class HilfeSearchSource implements SearchSourceInterface
 {
@@ -65,7 +67,7 @@ class HilfeSearchSource implements SearchSourceInterface
                     return null;
                 }
 
-                return $this->toResult($candidate, $score);
+                return $this->toResult($candidate, $score, $query);
             })
             ->filter()
             ->sortByDesc(fn (SearchResult $result): float => $result->score ?? 0.0)
@@ -86,10 +88,16 @@ class HilfeSearchSource implements SearchSourceInterface
     }
 
     /**
-     * @param  array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>}  $candidate
+     * @param  array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>, body?: string}  $candidate
      */
-    private function toResult(array $candidate, ?float $score = null): SearchResult
+    private function toResult(array $candidate, ?float $score = null, ?string $query = null): SearchResult
     {
+        $snippet = null;
+
+        if ($query !== null && ($candidate['body'] ?? '') !== '') {
+            $snippet = $this->excerpt($candidate['body'], $query, $candidate['title']);
+        }
+
         return new SearchResult(
             title: $candidate['title'],
             url: $candidate['url'],
@@ -100,11 +108,12 @@ class HilfeSearchSource implements SearchSourceInterface
             subtitle: $candidate['subtitle'],
             sourceKey: $this->key(),
             score: $score,
+            snippet: $snippet,
         );
     }
 
     /**
-     * @return Collection<int, array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>}>
+     * @return Collection<int, array{title: string, url: string, subtitle: string, icon: string, entityId: string, haystack: list<string>, body?: string}>
      */
     private function candidates(Authenticatable $user): Collection
     {
@@ -146,17 +155,20 @@ class HilfeSearchSource implements SearchSourceInterface
 
         foreach ($this->manuals->forUser($user) as $definition) {
             /** @var ManualDefinition $definition */
+            $body = $this->manualPlainText($definition);
             $items->push([
                 'title' => $definition->title,
                 'url' => $this->manualUrl($definition),
                 'subtitle' => 'Anleitung · '.$definition->appName,
                 'icon' => 'book-open',
                 'entityId' => 'manual:'.$definition->key,
+                'body' => $body,
                 'haystack' => [
                     $definition->title,
                     $definition->description,
                     $definition->appName,
                     $definition->key,
+                    $body,
                 ],
             ]);
         }
@@ -229,55 +241,159 @@ class HilfeSearchSource implements SearchSourceInterface
         return route('hilfe.manuals.show', $definition->key);
     }
 
+    private function manualPlainText(ManualDefinition $definition): string
+    {
+        $cacheKey = 'hilfe.manual-text.'.$definition->key.'.'.$definition->version.'.'.$this->manualViewRevision($definition);
+
+        try {
+            return Cache::remember($cacheKey, now()->addDay(), function () use ($definition): string {
+                $html = view($definition->contentView, [
+                    'manualKey' => $definition->key,
+                ])->render();
+
+                $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $text = str_replace("\u{00A0}", ' ', $text);
+                $text = (string) preg_replace('/\s+/u', ' ', $text);
+
+                return trim($text);
+            });
+        } catch (Throwable $e) {
+            Log::warning('Hilfe manual text could not be rendered', [
+                'manual' => $definition->key,
+                'error' => $e->getMessage(),
+            ]);
+
+            return '';
+        }
+    }
+
+    private function manualViewRevision(ManualDefinition $definition): string
+    {
+        try {
+            $path = app('view')->getFinder()->find($definition->contentView);
+        } catch (Throwable) {
+            return '0';
+        }
+
+        if (! is_file($path)) {
+            return '0';
+        }
+
+        return (string) filemtime($path);
+    }
+
     /**
      * @param  list<string>  $haystack
      */
     private function matchScore(string $query, array $haystack): float
     {
-        $normalizedQuery = $this->normalize($query);
+        $tokens = HilfeSearchText::tokens($query);
 
-        if ($normalizedQuery === '') {
+        if ($tokens === []) {
             return 0.0;
         }
 
-        $best = 0.0;
+        $fields = [];
 
         foreach ($haystack as $index => $field) {
-            $normalizedField = $this->normalize($field);
+            $words = HilfeSearchText::tokens($field);
 
-            if ($normalizedField === '') {
+            if ($words === []) {
                 continue;
             }
 
-            $exact = $index === 0 ? 1.0 : 0.85;
-            $prefix = $index === 0 ? 0.8 : 0.65;
-            $contains = $index === 0 ? 0.5 : 0.4;
+            $fields[] = [
+                'index' => $index,
+                'words' => $words,
+            ];
+        }
 
-            if ($normalizedField === $normalizedQuery) {
-                $best = max($best, $exact);
+        $titleWords = [];
 
-                continue;
-            }
+        foreach ($fields as $field) {
+            if ($field['index'] === 0) {
+                $titleWords = $field['words'];
 
-            if (Str::startsWith($normalizedField, $normalizedQuery)) {
-                $best = max($best, $prefix);
-
-                continue;
-            }
-
-            if (Str::contains($normalizedField, $normalizedQuery)) {
-                $best = max($best, $contains);
+                break;
             }
         }
 
-        return $best;
+        $matchedInTitle = 0;
+
+        foreach ($tokens as $token) {
+            $inTitle = HilfeSearchText::matchesAny($token, $titleWords);
+
+            if ($inTitle) {
+                $matchedInTitle++;
+
+                continue;
+            }
+
+            $matched = false;
+
+            foreach ($fields as $field) {
+                if ($field['index'] === 0) {
+                    continue;
+                }
+
+                if (HilfeSearchText::matchesAny($token, $field['words'])) {
+                    $matched = true;
+
+                    break;
+                }
+            }
+
+            if (! $matched) {
+                return 0.0;
+            }
+        }
+
+        return 0.45 + (0.55 * ($matchedInTitle / count($tokens)));
     }
 
-    private function normalize(string $value): string
+    private function excerpt(string $body, string $query, string $title): ?string
     {
-        $value = mb_strtolower(trim($value));
-        $value = (string) preg_replace('/\s+/u', ' ', $value);
+        $titleWords = HilfeSearchText::tokens($title);
+        $bodyWords = HilfeSearchText::tokens($body);
+        $needles = [];
 
-        return $value;
+        foreach (HilfeSearchText::tokens($query) as $token) {
+            if (HilfeSearchText::matchesAny($token, $titleWords)) {
+                continue;
+            }
+
+            if (HilfeSearchText::matchesAny($token, $bodyWords)) {
+                $needles[] = $token;
+            }
+        }
+
+        if ($needles === []) {
+            return null;
+        }
+
+        usort($needles, fn (string $left, string $right): int => mb_strlen($right) <=> mb_strlen($left));
+
+        $pattern = '/(?<![\p{L}\p{N}])(?:'.implode('|', array_map(
+            fn (string $token): string => preg_quote($token, '/'),
+            $needles,
+        )).')/iu';
+
+        if (! preg_match($pattern, $body, $matches, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+
+        $charOffset = mb_strlen(substr($body, 0, $matches[0][1]));
+        $start = max(0, $charOffset - 50);
+        $excerpt = trim(mb_substr($body, $start, 160));
+
+        if ($start > 0) {
+            $excerpt = '…'.$excerpt;
+        }
+
+        if ($start + 160 < mb_strlen($body)) {
+            $excerpt .= '…';
+        }
+
+        return $excerpt;
     }
 }

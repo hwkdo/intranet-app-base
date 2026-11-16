@@ -20,6 +20,7 @@ class SearchResult
         public readonly ?string $sourceKey = null,
         public readonly ?float $score = null,
         public readonly bool $download = false,
+        public readonly ?string $snippet = null,
     ) {}
 
     public function entityId(): string
