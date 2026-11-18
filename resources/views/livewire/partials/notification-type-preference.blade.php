@@ -3,17 +3,49 @@
     $wireKey = \Hwkdo\IntranetAppBase\Livewire\NotificationSettings::toWireKey($definition->key);
     $pref = $preferences[$wireKey] ?? ['enabled' => true, 'channels' => []];
     $showCentralPushHint = $showCentralPushHint ?? false;
+    $layout = $layout ?? 'card';
+    $compact = $compact ?? false;
+    $isRow = $layout === 'row';
+    $displayLabel = $definition->label;
+
+    if ($compact && str_starts_with($displayLabel, 'Neue News: ')) {
+        $displayLabel = mb_substr($displayLabel, mb_strlen('Neue News: '));
+    }
+
+    $description = $definition->description;
+
+    if ($compact && ! $definition->mandatory) {
+        $description = null;
+    }
 @endphp
 
-<div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-    <div class="flex flex-wrap items-start justify-between gap-2">
-        <div>
-            <flux:heading size="sm">{{ $definition->label }}</flux:heading>
-            @if($definition->description)
-                <flux:text class="mt-1 text-sm text-zinc-500">{{ $definition->description }}</flux:text>
-            @endif
-            @if($definition->mandatory)
-                <flux:badge size="sm" color="amber" class="mt-2">Pflicht</flux:badge>
+<div @class([
+    'rounded-lg border border-zinc-200 p-3 dark:border-zinc-700' => ! $isRow,
+    'py-4' => $isRow,
+]) wire:key="notification-pref-{{ $wireKey }}">
+    <div @class([
+        'flex flex-wrap items-start justify-between gap-2' => ! $isRow,
+        'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-8' => $isRow,
+    ])>
+        <div class="min-w-0 flex-1">
+            @if ($isRow)
+                <div class="flex flex-wrap items-center gap-2">
+                    <p class="text-sm font-medium text-[#073070] dark:text-white">{{ $displayLabel }}</p>
+                    @if($definition->mandatory)
+                        <flux:badge size="sm" color="amber">Pflicht</flux:badge>
+                    @endif
+                </div>
+                @if(filled($description))
+                    <p class="mt-0.5 text-sm text-slate-600 dark:text-white/70">{{ $description }}</p>
+                @endif
+            @else
+                <flux:heading size="sm">{{ $displayLabel }}</flux:heading>
+                @if(filled($description))
+                    <flux:text class="mt-1 text-sm text-zinc-500">{{ $description }}</flux:text>
+                @endif
+                @if($definition->mandatory)
+                    <flux:badge size="sm" color="amber" class="mt-2">Pflicht</flux:badge>
+                @endif
             @endif
         </div>
 
@@ -26,7 +58,10 @@
     </div>
 
     @if($definition->mandatory || ($pref['enabled'] ?? true))
-        <div class="mt-3 flex flex-wrap gap-3">
+        <div @class([
+            'mt-3 flex flex-wrap gap-3' => ! $isRow,
+            'mt-3 flex flex-wrap gap-x-4 gap-y-2' => $isRow,
+        ])>
             @foreach($definition->resolvedAvailableChannels() as $channelKey)
                 @php
                     $checked = in_array($channelKey, $pref['channels'] ?? [], true);

@@ -49,55 +49,57 @@
         </div>
     @else
         <div class="space-y-4">
-            <flux:card class="glass-card p-3">
-                <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div class="flex-1">
+            @php
+                $notificationTabs = [
+                    ['name' => 'apps', 'label' => 'Apps', 'icon' => 'squares-2x2'],
+                    ['name' => 'news', 'label' => 'News', 'icon' => 'newspaper'],
+                    ['name' => 'settings', 'label' => 'Einstellungen', 'icon' => 'cog'],
+                ];
+            @endphp
+
+            <div class="glass-card sticky top-3 z-20 p-3 shadow-lg shadow-[#073070]/10" style="--glass-opacity: 0.92">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div class="min-w-0 flex-1">
                         <flux:input
                             type="search"
                             wire:model.live.debounce.300ms="searchTerm"
                             placeholder="Suchen (z. B. Fuhrpark, Bestellung, News)"
                             icon="magnifying-glass"
-                            size="sm"
+                            aria-label="Benachrichtigungen durchsuchen"
+                            clearable
                         />
                     </div>
 
-                    <flux:text class="text-sm text-zinc-500">
+                    <span class="w-fit rounded-full bg-[#073070] px-3 py-1 text-xs font-semibold text-white">
                         {{ $this->filteredGroupedTypes->flatten()->count() }} Treffer
-                    </flux:text>
+                    </span>
                 </div>
 
-                @if(trim($this->searchTerm) !== '')
-                    <div class="mt-2">
-                        <flux:button type="button" size="xs" variant="ghost" wire:click="$set('searchTerm', '')">
-                            Suche zurücksetzen
-                        </flux:button>
-                    </div>
-                @endif
-            </flux:card>
+                <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-[#d0e3f9] pt-2.5 dark:border-white/10" role="tablist" aria-label="Bereiche">
+                    @foreach ($notificationTabs as $tab)
+                        <button
+                            type="button"
+                            id="notification-tab-{{ $tab['name'] }}"
+                            wire:click="$set('activeTab', '{{ $tab['name'] }}')"
+                            wire:key="notification-tab-{{ $tab['name'] }}"
+                            role="tab"
+                            aria-controls="notification-panel-{{ $tab['name'] }}"
+                            aria-selected="{{ $activeTab === $tab['name'] ? 'true' : 'false' }}"
+                            @class([
+                                'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500',
+                                'bg-[#073070] text-white shadow-md shadow-[#073070]/25' => $activeTab === $tab['name'],
+                                'bg-white/80 text-[#073070] ring-1 ring-[#d0e3f9] hover:bg-[#073070] hover:text-white dark:bg-white/10 dark:text-white dark:ring-white/15 dark:hover:bg-white dark:hover:text-[#073070]' => $activeTab !== $tab['name'],
+                            ])
+                        >
+                            <flux:icon :icon="$tab['icon']" variant="micro" class="size-4" />
+                            {{ $tab['label'] }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
 
-            <flux:tab.group>
-                <flux:tabs wire:model="activeTab" class="mb-4">
-                    <flux:tab name="apps">
-                        <span class="inline-flex items-center gap-2">
-                            <flux:icon icon="layout-grid" class="size-4" />
-                            Apps
-                        </span>
-                    </flux:tab>
-                    <flux:tab name="news">
-                        <span class="inline-flex items-center gap-2">
-                            <flux:icon icon="newspaper" class="size-4" />
-                            News
-                        </span>
-                    </flux:tab>
-                    <flux:tab name="settings">
-                        <span class="inline-flex items-center gap-2">
-                            <flux:icon icon="cog" class="size-4" />
-                            Einstellungen
-                        </span>
-                    </flux:tab>
-                </flux:tabs>
-
-                <flux:tab.panel name="apps">
+            @if ($activeTab === 'apps')
+                <div id="notification-panel-apps" role="tabpanel" aria-labelledby="notification-tab-apps">
                     @if($this->appsGroupedTypes->isEmpty())
                         <flux:callout variant="warning" icon="layout-grid" class="p-4">
                             Keine App-Benachrichtigungstypen passend zu <code>{{ $this->searchTerm }}</code>.
@@ -121,26 +123,52 @@
                             @endforeach
                         </div>
                     @endif
-                </flux:tab.panel>
-
-                <flux:tab.panel name="news">
+                </div>
+            @elseif ($activeTab === 'news')
+                <div id="notification-panel-news" role="tabpanel" aria-labelledby="notification-tab-news">
                     @if($this->newsDefinitions->isEmpty())
-                        <flux:callout variant="warning" icon="newspaper" class="p-4">
-                            Keine News-Benachrichtigungstypen passend zu <code>{{ $this->searchTerm }}</code>.
-                        </flux:callout>
-                    @else
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            @foreach($this->newsDefinitions as $definition)
-                                @include('intranet-app-base::livewire.partials.notification-type-preference', [
-                                    'definition' => $definition,
-                                ])
-                            @endforeach
+                        <div class="glass-card flex flex-col items-center gap-3 px-6 py-14 text-center">
+                            <span class="grid size-12 place-items-center rounded-2xl bg-[#073070]/10 text-[#073070] dark:bg-white/10 dark:text-white">
+                                <flux:icon icon="newspaper" class="size-6" />
+                            </span>
+                            <p class="text-base font-semibold text-[#073070] dark:text-white">
+                                {{ trim($this->searchTerm) !== '' ? 'Keine Treffer' : 'Keine News-Kategorien' }}
+                            </p>
+                            <p class="max-w-md text-sm text-slate-600 dark:text-white/70">
+                                @if(trim($this->searchTerm) !== '')
+                                    Für „{{ $this->searchTerm }}“ wurde keine News-Kategorie gefunden.
+                                @else
+                                    Derzeit sind keine News-Kategorien für Benachrichtigungen hinterlegt.
+                                @endif
+                            </p>
                         </div>
-                    @endif
-                </flux:tab.panel>
+                    @else
+                        <section class="glass-card overflow-hidden">
+                            <div class="flex items-center gap-3 border-b border-[#d0e3f9] px-5 py-4 dark:border-white/10">
+                                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#073070]/10 text-[#073070] dark:bg-white/10 dark:text-white">
+                                    <flux:icon icon="newspaper" variant="micro" class="size-5" />
+                                </span>
+                                <div class="min-w-0">
+                                    <h3 class="text-sm font-semibold text-[#073070] dark:text-white">News-Kategorien</h3>
+                                    <p class="text-xs text-slate-600 dark:text-white/70">Neue Beiträge nach Kategorie und Kanal.</p>
+                                </div>
+                            </div>
 
-                <flux:tab.panel name="settings">
-                    <flux:card class="glass-card mb-4">
+                            <div class="divide-y divide-[#d0e3f9] px-5 dark:divide-white/10">
+                                @foreach($this->newsDefinitions as $definition)
+                                    @include('intranet-app-base::livewire.partials.notification-type-preference', [
+                                        'definition' => $definition,
+                                        'layout' => 'row',
+                                        'compact' => true,
+                                    ])
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+                </div>
+            @else
+                <div id="notification-panel-settings" role="tabpanel" aria-labelledby="notification-tab-settings" class="space-y-4">
+                    <flux:card class="glass-card">
                         <flux:heading size="md" class="mb-2">Microsoft Teams</flux:heading>
                         <flux:text class="mb-4 text-sm text-zinc-500">
                             Benachrichtigungen über Teams laufen als 1:1-Bot-Konversation. Dafür muss der Teams-Bot für Ihr Konto installiert und aktiv sein.
@@ -173,7 +201,7 @@
                         @endif
                     </flux:card>
 
-                    <flux:card class="glass-card mb-4">
+                    <flux:card class="glass-card">
                         <flux:heading size="md" class="mb-2">Web-Push-Geräte</flux:heading>
                         <flux:text class="mb-4 text-sm text-zinc-500">
                             Registrieren Sie diesen Browser, um Push-Benachrichtigungen auch außerhalb des Intranets zu erhalten.
@@ -269,8 +297,8 @@
                             @endforeach
                         </div>
                     </flux:card>
-                </flux:tab.panel>
-            </flux:tab.group>
+                </div>
+            @endif
 
             <div class="flex justify-end">
                 <flux:button wire:click="save" variant="primary">Speichern</flux:button>
