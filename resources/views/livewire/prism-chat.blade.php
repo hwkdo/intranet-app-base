@@ -540,7 +540,7 @@ new class extends Component
 
 <div
     @class([
-        'prism-chat relative isolate flex w-full flex-col overflow-hidden rounded-2xl border border-blue-100/80 bg-white/75 shadow-xl shadow-blue-950/5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30',
+        'prism-chat glass-card relative isolate flex w-full flex-col',
         'h-full min-h-0 flex-1' => $embedded,
         'h-[min(78dvh,56rem)] min-h-[32rem]' => ! $embedded,
     ])
@@ -569,15 +569,28 @@ new class extends Component
             .prism-chat-message { animation: prism-chat-in .35s cubic-bezier(.21, 1.02, .73, 1) both; }
             @keyframes prism-chat-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+            .prism-chat {
+                --color-accent: #073070;
+                --color-accent-content: #073070;
+                --color-accent-foreground: #ffffff;
+            }
+            .dark .prism-chat {
+                --color-accent: #d0e3f9;
+                --color-accent-content: #d0e3f9;
+                --color-accent-foreground: #04214e;
+            }
+            .prism-chat [data-flux-heading] { color: #073070; }
+            .dark .prism-chat [data-flux-heading] { color: #fff; }
+
             .prism-chat-shimmer {
-                background: linear-gradient(90deg, rgb(100 116 139) 0%, rgb(99 102 241) 50%, rgb(100 116 139) 100%);
+                background: linear-gradient(90deg, #456494 0%, #073070 50%, #456494 100%);
                 background-size: 200% 100%;
                 -webkit-background-clip: text;
                 background-clip: text;
                 color: transparent;
                 animation: prism-chat-shimmer 2.2s linear infinite;
             }
-            .dark .prism-chat-shimmer { background-image: linear-gradient(90deg, rgb(148 163 184) 0%, rgb(199 210 254) 50%, rgb(148 163 184) 100%); }
+            .dark .prism-chat-shimmer { background-image: linear-gradient(90deg, #a0c7f2 0%, #d0e3f9 50%, #a0c7f2 100%); }
             @keyframes prism-chat-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
             @media (prefers-reduced-motion: reduce) {
@@ -593,28 +606,28 @@ new class extends Component
             .prism-chat-markdown > * + * { margin-top: .75em; }
             .prism-chat-markdown > :first-child { margin-top: 0; }
             .prism-chat-markdown > :last-child { margin-bottom: 0; }
-            .prism-chat-markdown h1, .prism-chat-markdown h2, .prism-chat-markdown h3, .prism-chat-markdown h4 { font-weight: 600; line-height: 1.35; color: rgb(15 23 42); margin-top: 1.25em; }
+            .prism-chat-markdown h1, .prism-chat-markdown h2, .prism-chat-markdown h3, .prism-chat-markdown h4 { font-weight: 600; line-height: 1.35; color: #073070; margin-top: 1.25em; }
             .dark .prism-chat-markdown h1, .dark .prism-chat-markdown h2, .dark .prism-chat-markdown h3, .dark .prism-chat-markdown h4 { color: #fff; }
             .prism-chat-markdown h1 { font-size: 1.25rem; }
             .prism-chat-markdown h2 { font-size: 1.125rem; }
             .prism-chat-markdown h3, .prism-chat-markdown h4 { font-size: 1rem; }
-            .prism-chat-markdown strong { font-weight: 600; color: rgb(15 23 42); }
+            .prism-chat-markdown strong { font-weight: 600; color: #073070; }
             .dark .prism-chat-markdown strong { color: #fff; }
             .prism-chat-markdown ul, .prism-chat-markdown ol { padding-left: 1.35rem; }
             .prism-chat-markdown ul { list-style: disc; }
             .prism-chat-markdown ol { list-style: decimal; }
             .prism-chat-markdown li + li { margin-top: .3em; }
             .prism-chat-markdown li > ul, .prism-chat-markdown li > ol { margin-top: .3em; }
-            .prism-chat-markdown li::marker { color: rgb(99 102 241); }
-            .dark .prism-chat-markdown li::marker { color: rgb(165 180 252); }
-            .prism-chat-markdown a { color: rgb(37 99 235); font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: rgb(37 99 235 / .35); transition: text-decoration-color .15s; }
-            .prism-chat-markdown a:hover { text-decoration-color: rgb(37 99 235); }
-            .dark .prism-chat-markdown a { color: rgb(147 197 253); text-decoration-color: rgb(147 197 253 / .4); }
-            .dark .prism-chat-markdown a:hover { text-decoration-color: rgb(147 197 253); }
-            .prism-chat-markdown :not(pre) > code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; padding: .12em .4em; border-radius: .375rem; background: rgb(99 102 241 / .1); color: rgb(67 56 202); }
-            .dark .prism-chat-markdown :not(pre) > code { background: rgb(165 180 252 / .15); color: rgb(199 210 254); }
-            .prism-chat-markdown pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; line-height: 1.6; padding: .9rem 1rem; border-radius: .75rem; overflow-x: auto; background: rgb(15 23 42); color: rgb(226 232 240); border: 1px solid rgb(255 255 255 / .06); }
-            .prism-chat-markdown blockquote { border-left: 3px solid rgb(129 140 248); padding-left: .9rem; color: rgb(71 85 105); font-style: italic; }
+            .prism-chat-markdown li::marker { color: #456494; }
+            .dark .prism-chat-markdown li::marker { color: #d0e3f9; }
+            .prism-chat-markdown a { color: #073070; font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: rgb(7 48 112 / .35); transition: text-decoration-color .15s; }
+            .prism-chat-markdown a:hover { text-decoration-color: #073070; }
+            .dark .prism-chat-markdown a { color: #d0e3f9; text-decoration-color: rgb(208 227 249 / .45); }
+            .dark .prism-chat-markdown a:hover { text-decoration-color: #d0e3f9; }
+            .prism-chat-markdown :not(pre) > code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85em; padding: .12em .4em; border-radius: .375rem; background: rgb(208 227 249 / .7); color: #073070; }
+            .dark .prism-chat-markdown :not(pre) > code { background: rgb(208 227 249 / .16); color: #d0e3f9; }
+            .prism-chat-markdown pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; line-height: 1.6; padding: .9rem 1rem; border-radius: .75rem; overflow-x: auto; background: #04214e; color: #d0e3f9; border: 1px solid rgb(208 227 249 / .25); }
+            .prism-chat-markdown blockquote { border-left: 3px solid #a0c7f2; padding-left: .9rem; color: rgb(71 85 105); font-style: italic; }
             .dark .prism-chat-markdown blockquote { color: rgb(203 213 225); }
             .prism-chat-markdown hr { border: 0; border-top: 1px solid rgb(203 213 225 / .7); margin: 1.25em 0; }
             .dark .prism-chat-markdown hr { border-top-color: rgb(255 255 255 / .12); }
@@ -623,24 +636,24 @@ new class extends Component
             .prism-chat-markdown th, .prism-chat-markdown td { padding: .5rem .75rem; text-align: left; border-bottom: 1px solid rgb(226 232 240); }
             .dark .prism-chat-markdown th, .dark .prism-chat-markdown td { border-bottom-color: rgb(255 255 255 / .08); }
             .prism-chat-markdown tr:last-child td { border-bottom: 0; }
-            .prism-chat-markdown th { font-weight: 600; background: rgb(238 242 255); color: rgb(30 41 59); white-space: nowrap; }
+            .prism-chat-markdown th { font-weight: 600; background: #d0e3f9; color: #073070; white-space: nowrap; }
             .dark .prism-chat-markdown th { background: rgb(255 255 255 / .06); color: #fff; }
             .prism-chat-markdown--compact { font-size: .75rem; line-height: 1.6; color: inherit; }
         </style>
     @endassets
 
     <div aria-hidden="true" class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div class="absolute -top-32 left-1/2 size-[30rem] -translate-x-1/2 rounded-full bg-linear-to-br from-blue-400/25 via-indigo-400/15 to-transparent blur-3xl dark:from-blue-500/25 dark:via-indigo-500/15"></div>
-        <div class="absolute -right-24 -bottom-40 size-96 rounded-full bg-linear-to-tr from-sky-300/20 via-violet-300/10 to-transparent blur-3xl dark:from-sky-500/10 dark:via-violet-500/10"></div>
+        <div class="absolute -top-32 left-1/2 size-[30rem] -translate-x-1/2 rounded-full bg-[#a0c7f2]/30 blur-3xl"></div>
+        <div class="absolute -right-24 -bottom-40 size-96 rounded-full bg-[#d0e3f9]/25 blur-3xl"></div>
     </div>
 
     @unless ($embedded)
-        <div class="flex shrink-0 items-center gap-3 border-b border-blue-100/70 px-4 py-3 sm:px-5 dark:border-white/10">
+        <div class="flex shrink-0 items-center gap-3 border-b border-[#d0e3f9] px-4 py-3 sm:px-5 dark:border-white/10">
             <div class="relative shrink-0">
-                <div class="flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 ring-1 ring-white/30">
+                <div class="flex size-10 items-center justify-center rounded-xl bg-[#073070]/10 text-[#073070] dark:bg-white/10 dark:text-white">
                     <flux:icon.sparkles variant="solid" class="size-5" />
                 </div>
-                <span class="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"></span>
+                <span class="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white bg-emerald-500 dark:border-[#073070]"></span>
             </div>
 
             <div class="min-w-0 flex-1">
@@ -649,7 +662,7 @@ new class extends Component
                     @if ($lightragInstance)
                         <flux:badge size="sm" color="green" icon="circle-stack" class="max-sm:hidden">LightRAG</flux:badge>
                     @elseif ($useMcpTools && $appIdentifier)
-                        <flux:badge size="sm" color="indigo" icon="bolt" class="max-sm:hidden">App-Werkzeuge</flux:badge>
+                        <flux:badge size="sm" icon="bolt" class="max-sm:hidden bg-[#d0e3f9]! text-[#073070]! dark:bg-white/10! dark:text-[#d0e3f9]!">App-Werkzeuge</flux:badge>
                     @endif
                 </div>
                 <flux:text size="sm" class="truncate">
@@ -686,9 +699,9 @@ new class extends Component
             @if (empty($messages) && ! $isStreaming)
                 <div class="flex flex-1 flex-col items-center justify-center py-6 text-center">
                     <div class="relative mb-6">
-                        <div class="absolute inset-0 animate-pulse rounded-3xl bg-linear-to-br from-blue-500 to-violet-500 opacity-40 blur-2xl"></div>
+                        <div class="absolute inset-0 animate-pulse rounded-3xl bg-[#a0c7f2]/40 blur-2xl"></div>
                         <div @class([
-                            'relative flex items-center justify-center rounded-2xl bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-xl shadow-indigo-500/30 ring-1 ring-white/30',
+                            'relative flex items-center justify-center rounded-2xl bg-[#073070] text-white shadow-lg shadow-[#073070]/25',
                             'size-12' => $embedded,
                             'size-16' => ! $embedded,
                         ])>
@@ -697,7 +710,7 @@ new class extends Component
                     </div>
 
                     <h2 @class([
-                        'bg-linear-to-r from-blue-700 via-indigo-600 to-violet-600 bg-clip-text font-semibold tracking-tight text-transparent dark:from-sky-300 dark:via-indigo-200 dark:to-violet-300',
+                        'font-semibold tracking-tight text-[#073070] dark:text-white',
                         'text-lg' => $embedded,
                         'text-2xl sm:text-3xl' => ! $embedded,
                     ])>
@@ -718,11 +731,11 @@ new class extends Component
                                     wire:key="prism-suggestion-{{ $loop->index }}"
                                     wire:click="sendSuggestion(@js($suggestion))"
                                     x-on:click="atBottom = true"
-                                    class="group flex items-start gap-3 rounded-xl border border-blue-100 bg-white/80 p-3.5 text-left text-sm text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-500/10 focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:outline-none dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:border-indigo-400/50 dark:hover:bg-white/10"
+                                    class="group flex items-start gap-3 rounded-xl border border-[#d0e3f9] bg-white/80 p-3.5 text-left text-sm text-[#073070] shadow-sm transition duration-200 hover:bg-[#d0e3f9]/70 focus-visible:ring-2 focus-visible:ring-[#073070]/30 focus-visible:outline-none dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                                 >
-                                    <flux:icon.chat-bubble-left-ellipsis class="mt-0.5 size-4 shrink-0 text-indigo-500 dark:text-indigo-300" />
+                                    <flux:icon.chat-bubble-left-ellipsis class="mt-0.5 size-4 shrink-0 text-[#073070] dark:text-[#d0e3f9]" />
                                     <span class="flex-1">{{ $suggestion }}</span>
-                                    <flux:icon.arrow-up-right class="mt-0.5 size-4 shrink-0 text-indigo-400 opacity-0 transition group-hover:opacity-100" />
+                                    <flux:icon.arrow-up-right class="mt-0.5 size-4 shrink-0 text-[#456494] opacity-0 transition group-hover:opacity-100 dark:text-[#d0e3f9]" />
                                 </button>
                             @endforeach
                         </div>
@@ -732,14 +745,14 @@ new class extends Component
                 @foreach ($messages as $message)
                     @if ($message['role'] === 'user')
                         <div wire:key="prism-message-{{ $loop->index }}" class="prism-chat-message flex justify-end">
-                            <div class="max-w-[85%] rounded-2xl rounded-br-md bg-linear-to-br from-blue-600 to-indigo-600 px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-md shadow-indigo-600/20">{{ $message['content'] }}</div>
+                            <div class="max-w-[85%] rounded-2xl rounded-br-md bg-[#073070] px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words text-white shadow-md shadow-[#073070]/20 dark:bg-[#d0e3f9] dark:text-[#04214e]">{{ $message['content'] }}</div>
                         </div>
                     @else
                         @php($isError = str_starts_with((string) ($message['content'] ?? ''), 'Fehler:'))
                         <div wire:key="prism-message-{{ $loop->index }}" class="prism-chat-message group flex items-start gap-3" x-data="markdownProcessor">
                             <div @class([
                                 'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg text-white shadow-md',
-                                'bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 shadow-indigo-500/25' => ! $isError,
+                                'bg-[#073070] shadow-[#073070]/20 dark:bg-white/15' => ! $isError,
                                 'bg-red-500 shadow-red-500/25' => $isError,
                             ])>
                                 @if ($isError)
@@ -759,7 +772,7 @@ new class extends Component
                                 @if (! empty($message['toolCalls'] ?? []))
                                     <div class="flex flex-wrap gap-1.5">
                                         @foreach ($message['toolCalls'] as $toolCall)
-                                            <flux:badge size="sm" color="sky" icon="wrench-screwdriver">
+                                            <flux:badge size="sm" icon="wrench-screwdriver" class="bg-[#d0e3f9]! text-[#073070]! dark:bg-white/10! dark:text-[#d0e3f9]!">
                                                 <span class="font-mono text-[11px]">{{ $toolCall['name'] ?? 'unknown' }}</span>
                                             </flux:badge>
                                         @endforeach
@@ -768,7 +781,7 @@ new class extends Component
 
                                 <div @class([
                                     'w-fit max-w-full rounded-2xl rounded-tl-md border px-4 py-3 shadow-sm',
-                                    'border-blue-100/80 bg-white/90 dark:border-white/10 dark:bg-white/5' => ! $isError,
+                                    'border-[#d0e3f9] bg-white/90 dark:border-white/10 dark:bg-[#04214e]/45' => ! $isError,
                                     'border-red-200 bg-red-50/90 dark:border-red-400/30 dark:bg-red-500/10' => $isError,
                                 ])>
                                     <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
@@ -802,8 +815,8 @@ new class extends Component
 
                 @if ($isStreaming)
                     <div wire:key="prism-message-streaming" class="prism-chat-message flex items-start gap-3" x-data="markdownProcessor">
-                        <div class="relative mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-blue-500 via-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/25">
-                            <span class="absolute inset-0 animate-ping rounded-lg bg-indigo-400/40 [animation-duration:2s]"></span>
+                        <div class="relative mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#073070] text-white shadow-md shadow-[#073070]/20 dark:bg-white/15">
+                            <span class="absolute inset-0 animate-ping rounded-lg bg-[#a0c7f2]/50 [animation-duration:2s]"></span>
                             <flux:icon.sparkles variant="micro" class="relative size-4" />
                         </div>
 
@@ -812,9 +825,9 @@ new class extends Component
 
                             <div x-show="!streamData.text" class="flex h-8 items-center gap-2.5 text-sm">
                                 <span class="flex items-center gap-1">
-                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.3s] dark:bg-indigo-300"></span>
-                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.15s] dark:bg-indigo-300"></span>
-                                    <span class="size-1.5 animate-bounce rounded-full bg-indigo-500 dark:bg-indigo-300"></span>
+                                    <span class="size-1.5 animate-bounce rounded-full bg-[#073070] [animation-delay:-0.3s] dark:bg-[#d0e3f9]"></span>
+                                    <span class="size-1.5 animate-bounce rounded-full bg-[#073070] [animation-delay:-0.15s] dark:bg-[#d0e3f9]"></span>
+                                    <span class="size-1.5 animate-bounce rounded-full bg-[#073070] dark:bg-[#d0e3f9]"></span>
                                 </span>
                                 <span class="prism-chat-shimmer font-medium" x-text="hasToolCalls() ? 'Nutzt App-Werkzeuge …' : (hasThinking() ? 'Denkt nach …' : 'Schreibt …')">Schreibt …</span>
                             </div>
@@ -823,13 +836,13 @@ new class extends Component
 
                             <div x-show="hasToolCalls()" x-cloak class="flex flex-wrap gap-1.5">
                                 <template x-for="(toolCall, index) in streamData.toolCalls" :key="index">
-                                    <flux:badge size="sm" color="sky" icon="wrench-screwdriver">
+                                    <flux:badge size="sm" icon="wrench-screwdriver" class="bg-[#d0e3f9]! text-[#073070]! dark:bg-white/10! dark:text-[#d0e3f9]!">
                                         <span class="font-mono text-[11px]" x-text="toolCall.name"></span>
                                     </flux:badge>
                                 </template>
                             </div>
 
-                            <div x-show="html.length > 0" x-cloak class="w-fit max-w-full rounded-2xl rounded-tl-md border border-blue-100/80 bg-white/90 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/5">
+                            <div x-show="html.length > 0" x-cloak class="w-fit max-w-full rounded-2xl rounded-tl-md border border-[#d0e3f9] bg-white/90 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-[#04214e]/45">
                                 <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
                             </div>
                         </div>
@@ -847,7 +860,7 @@ new class extends Component
             x-transition.opacity.scale.90
             x-on:click="scrollToBottom()"
             aria-label="Zum Ende springen"
-            class="absolute -top-12 left-1/2 z-20 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-blue-100 bg-white/95 text-slate-600 shadow-lg backdrop-blur transition hover:text-indigo-600 dark:border-white/10 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:text-white"
+            class="absolute -top-12 left-1/2 z-20 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-[#d0e3f9] bg-white/95 text-slate-600 shadow-lg backdrop-blur transition hover:text-[#073070] dark:border-white/15 dark:bg-[#073070]/90 dark:text-white"
         >
             <flux:icon.arrow-down variant="micro" class="size-4" />
         </button>
@@ -868,7 +881,7 @@ new class extends Component
                 label="Nachricht"
                 label:sr-only
                 placeholder="Nachricht an den KI-Assistenten …"
-                class="shadow-lg shadow-blue-950/5 transition focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-500/10 dark:focus-within:border-indigo-400/40"
+                class="shadow-lg shadow-[#073070]/10 transition focus-within:border-[#073070] focus-within:ring-4 focus-within:ring-[#073070]/15 dark:focus-within:border-[#d0e3f9]/50"
             >
                 <x-slot name="actionsLeading">
                     @if ($embedded && ! empty($messages))
@@ -877,7 +890,7 @@ new class extends Component
                         </flux:tooltip>
                     @elseif (! $embedded)
                         <flux:text size="sm" class="flex items-center gap-1.5 px-1 pt-1.5 text-xs max-sm:hidden">
-                            <flux:icon.sparkles variant="micro" class="size-3.5 text-indigo-500 dark:text-indigo-300" />
+                            <flux:icon.sparkles variant="micro" class="size-3.5 text-[#073070] dark:text-[#d0e3f9]" />
                             KI-Antworten können fehlerhaft sein.
                         </flux:text>
                     @endif
