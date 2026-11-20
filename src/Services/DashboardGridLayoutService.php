@@ -14,7 +14,7 @@ class DashboardGridLayoutService
 
     /**
      * @param  array<int, DashboardWidgetDefinition>  $definitions
-     * @return array<string, array{minW: int, minH: int, defaultW: int, defaultH: int, mandatory: bool}>
+     * @return array<string, array{minW: int, minH: int, defaultW: int, defaultH: int, mandatory: bool, resizable: bool}>
      */
     public function widgetMetaByKeyFromDefinitions(array $definitions): array
     {
@@ -30,6 +30,7 @@ class DashboardGridLayoutService
                 'defaultW' => $definition->defaultW,
                 'defaultH' => $definition->defaultH,
                 'mandatory' => $definition->mandatory,
+                'resizable' => $definition->resizable,
             ];
         }
 
@@ -84,7 +85,7 @@ class DashboardGridLayoutService
     }
 
     /**
-     * @param  array<string, array{minW: int, minH: int, defaultW: int, defaultH: int, mandatory: bool}>  $widgetMetaByKey
+     * @param  array<string, array{minW: int, minH: int, defaultW: int, defaultH: int, mandatory: bool, resizable: bool}>  $widgetMetaByKey
      * @param  list<string>  $enabledWidgetKeys
      * @param  array<int, array<string, mixed>>  $candidateLayout
      * @return list<array{widgetKey: string, x: int, y: int, w: int, h: int}>
@@ -104,8 +105,13 @@ class DashboardGridLayoutService
             }
 
             $meta = $widgetMetaByKey[$widgetKey];
-            $w = max((int) $meta['minW'], min(self::LAYOUT_MAX_W, (int) ($item['w'] ?? $meta['defaultW'])));
-            $h = max((int) $meta['minH'], min(self::LAYOUT_MAX_H, (int) ($item['h'] ?? $meta['defaultH'])));
+            $locked = ($meta['resizable'] ?? true) === false;
+            $w = $locked
+                ? (int) $meta['defaultW']
+                : max((int) $meta['minW'], min(self::LAYOUT_MAX_W, (int) ($item['w'] ?? $meta['defaultW'])));
+            $h = $locked
+                ? (int) $meta['defaultH']
+                : max((int) $meta['minH'], min(self::LAYOUT_MAX_H, (int) ($item['h'] ?? $meta['defaultH'])));
 
             $layoutByKey[$widgetKey] = [
                 'widgetKey' => $widgetKey,

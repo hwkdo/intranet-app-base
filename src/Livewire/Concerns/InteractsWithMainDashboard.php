@@ -87,7 +87,7 @@ trait InteractsWithMainDashboard
     }
 
     /**
-     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, sourceApp: ?string, supportsItemCount: bool}>
+     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, sourceApp: ?string, supportsItemCount: bool, resizable: bool}>
      */
     protected function handleMainDashboardEnabledWidgetDefinitions(): array
     {

@@ -32,6 +32,9 @@
             gs-h="{{ $layoutItem['h'] }}"
             gs-min-w="{{ $widget['minW'] }}"
             gs-min-h="{{ $widget['minH'] }}"
+            @if (($widget['resizable'] ?? true) === false)
+                gs-no-resize="true"
+            @endif
             wire:key="{{ $itemWireKeyPrefix }}-{{ $widget['key'] }}"
         >
             <div class="grid-stack-item-content h-full min-h-0 p-1">

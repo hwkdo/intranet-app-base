@@ -112,6 +112,7 @@ class DashboardWidgetRegistry
             supportsItemCount: $definition->supportsItemCount,
             mandatory: false,
             sourceApp: $appIdentifier,
+            resizable: $definition->resizable,
         );
     }
 

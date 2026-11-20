@@ -18,5 +18,6 @@ class DashboardWidgetDefinition
         public bool $supportsItemCount = true,
         public bool $mandatory = false,
         public ?string $sourceApp = null,
+        public bool $resizable = true,
     ) {}
 }
