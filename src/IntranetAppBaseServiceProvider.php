@@ -46,6 +46,7 @@ use Hwkdo\IntranetAppBase\Services\TourProgressStore;
 use Hwkdo\IntranetAppBase\Support\DefaultGlobalSearchSettingsSource;
 use Hwkdo\IntranetAppBase\Support\DefaultUserSearchPreferencesSource;
 use Hwkdo\IntranetAppBase\Support\ManualAssetResolver;
+use Hwkdo\IntranetAppBase\Support\RegistersUserSignatureRelation;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Schedule;
@@ -193,5 +194,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
     public function boot()
     {
         parent::boot();
+
+        RegistersUserSignatureRelation::register();
     }
 }
