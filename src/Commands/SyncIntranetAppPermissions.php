@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hwkdo\IntranetAppBase\Commands;
 
+use App\Models\User;
 use Hwkdo\IntranetAppBase\Events\ExternalAppConfigSynced;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
 use Illuminate\Console\Command;
@@ -99,7 +100,40 @@ class SyncIntranetAppPermissions extends Command
 
         $this->syncPermissions($identifier, $permissions);
         $this->syncRoles($identifier, $roles);
+        $this->detachPermissions($appConfig['detach_permissions'] ?? []);
         $this->syncAllUsersRoles($roles);
+    }
+
+    /**
+     * @param  array<string, list<string>>  $detachPermissions
+     */
+    private function detachPermissions(array $detachPermissions): void
+    {
+        if ($detachPermissions === []) {
+            return;
+        }
+
+        $this->line('  → Entferne übernommene Permissions...');
+
+        foreach ($detachPermissions as $roleName => $permissionNames) {
+            if (! is_string($roleName) || ! is_array($permissionNames)) {
+                continue;
+            }
+
+            $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+            if ($role === null) {
+                continue;
+            }
+
+            foreach ($permissionNames as $permissionName) {
+                if (! is_string($permissionName) || ! $role->hasPermissionTo($permissionName)) {
+                    continue;
+                }
+
+                $role->revokePermissionTo($permissionName);
+                $this->line("    ✗ Permission '{$permissionName}' von Rolle '{$roleName}' entfernt");
+            }
+        }
     }
 
     private function syncPermissions(string $identifier, array $requiredPermissions): void
@@ -206,11 +240,11 @@ class SyncIntranetAppPermissions extends Command
         $this->line('  → Synchronisiere "all_users" Rollen...');
 
         // Hole alle aktiven User
-        $users = \App\Models\User::aktiv()->get();
+        $users = User::aktiv()->get();
 
         foreach ($allUsersRoles as $roleData) {
             $role = Role::findByName($roleData['name'], 'web');
-            
+
             if (! $role) {
                 continue;
             }

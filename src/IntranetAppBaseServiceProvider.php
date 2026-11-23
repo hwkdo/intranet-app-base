@@ -31,6 +31,7 @@ use Hwkdo\IntranetAppBase\Services\DashboardGridLayoutService;
 use Hwkdo\IntranetAppBase\Services\DashboardWidgetRegistry;
 use Hwkdo\IntranetAppBase\Services\GithubAppReleaseService;
 use Hwkdo\IntranetAppBase\Services\IntranetNotificationGateway;
+use Hwkdo\IntranetAppBase\Services\LightRagCitationRegistry;
 use Hwkdo\IntranetAppBase\Services\ManualCatalog;
 use Hwkdo\IntranetAppBase\Services\NotificationPreferenceResolver;
 use Hwkdo\IntranetAppBase\Services\NotificationTypeCatalog;
@@ -122,6 +123,7 @@ class IntranetAppBaseServiceProvider extends PackageServiceProvider
         $this->app->singleton(BackgroundActivityRegistrar::class);
         $this->app->singleton(BackgroundActivityRunRecorder::class);
         $this->app->singleton(BackgroundActivityOutput::class);
+        $this->app->singleton(LightRagCitationRegistry::class);
 
         // Register both class-based and Single-File/Volt components for Livewire 4
         Livewire::addNamespace(

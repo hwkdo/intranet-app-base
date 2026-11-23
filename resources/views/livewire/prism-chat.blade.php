@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Services\LightRagQueryClient;
 use Hwkdo\IntranetAppBase\IntranetAppBase;
+use Hwkdo\IntranetAppBase\Services\LightRagCitationRewriter;
 use Hwkdo\IntranetAppBase\Services\McpServerService;
 use Hwkdo\IntranetAppBase\Support\AiUsage;
 use Hwkdo\OpenwebuiApiLaravel\Services\OpenWebUiUserService;
@@ -238,6 +239,9 @@ new class extends Component
         }
 
         $references = [];
+        $citations = app(LightRagCitationRewriter::class);
+        $rawText = '';
+        $rawThinking = '';
 
         try {
             if ($this->lightragInstance !== null) {
@@ -343,9 +347,11 @@ new class extends Component
                 $eventCount++;
                 // Process different event types
                 if ($event instanceof TextDeltaEvent) {
-                    $streamData['text'] .= $event->delta;
+                    $rawText .= $event->delta;
+                    $streamData['text'] = $citations->rewrite($this->lightragInstance, $rawText);
                 } elseif ($event instanceof ThinkingEvent) {
-                    $streamData['thinking'] .= $event->delta;
+                    $rawThinking .= $event->delta;
+                    $streamData['thinking'] = $citations->rewrite($this->lightragInstance, $rawThinking);
                 } elseif ($event instanceof ToolCallEvent) {
                     $streamData['toolCalls'][] = [
                         'name' => $event->toolCall->name ?? 'unknown',
@@ -378,7 +384,7 @@ new class extends Component
                 ]);
             }
 
-            if (empty(trim($streamData['text'])) && ! empty($streamData['toolCalls'])) {
+            if (empty(trim($rawText)) && ! empty($streamData['toolCalls'])) {
                 $streamData['text'] = 'Die Anfrage wurde bearbeitet, aber es konnte keine Antwort formuliert werden. '
                     .'Bitte die Frage erneut stellen oder in der App prüfen, ob die Aktion erfolgreich war.';
 
@@ -401,7 +407,7 @@ new class extends Component
                     'toolCalls' => $streamData['toolCalls'],
                     'toolResults' => $streamData['toolResults'],
                     'thinking' => $streamData['thinking'],
-                    'references' => $references,
+                    'references' => $citations->references($this->lightragInstance, $references),
                 ];
             }
 
@@ -436,7 +442,7 @@ new class extends Component
                 'toolCalls' => [],
                 'toolResults' => [],
                 'thinking' => '',
-                'references' => $references,
+                'references' => $citations->references($this->lightragInstance, $references),
             ];
 
             // Also send via stream to ensure frontend receives it
@@ -784,13 +790,17 @@ new class extends Component
                                     'border-[#d0e3f9] bg-white/90 dark:border-white/10 dark:bg-[#04214e]/45' => ! $isError,
                                     'border-red-200 bg-red-50/90 dark:border-red-400/30 dark:bg-red-500/10' => $isError,
                                 ])>
-                                    <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
+                                    <article wire:ignore class="prism-chat-markdown" x-html="html" x-effect="html; $nextTick(() => { $el.querySelectorAll('a[href]').forEach((anchor) => { anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; }); })"></article>
                                 </div>
 
                                 @if (! empty($message['references'] ?? []))
-                                    <div class="flex flex-col gap-1">
+                                    <div class="prism-chat-markdown flex flex-col gap-1">
                                         @foreach ($message['references'] as $reference)
-                                            <span class="break-all font-mono text-xs text-slate-500 dark:text-slate-400">{{ $reference['file_path'] }}</span>
+                                            @if (! empty($reference['url']))
+                                                <a href="{{ $reference['url'] }}" target="_blank" rel="noopener noreferrer">{{ $reference['title'] ?? $reference['file_path'] }}</a>
+                                            @else
+                                                <span class="break-all font-mono text-xs text-slate-500 dark:text-slate-400">{{ $reference['file_path'] }}</span>
+                                            @endif
                                         @endforeach
                                     </div>
                                 @endif
@@ -843,7 +853,7 @@ new class extends Component
                             </div>
 
                             <div x-show="html.length > 0" x-cloak class="w-fit max-w-full rounded-2xl rounded-tl-md border border-[#d0e3f9] bg-white/90 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-[#04214e]/45">
-                                <article wire:ignore class="prism-chat-markdown" x-html="html"></article>
+                                <article wire:ignore class="prism-chat-markdown" x-html="html" x-effect="html; $nextTick(() => { $el.querySelectorAll('a[href]').forEach((anchor) => { anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; }); })"></article>
                             </div>
                         </div>
                     </div>
