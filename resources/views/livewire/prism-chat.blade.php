@@ -546,7 +546,7 @@ new class extends Component
 
 <div
     @class([
-        'prism-chat glass-card relative isolate flex w-full flex-col',
+        'prism-chat glass-card relative isolate flex w-full flex-col p-0',
         'h-full min-h-0 flex-1' => $embedded,
         'h-[min(78dvh,56rem)] min-h-[32rem]' => ! $embedded,
     ])
