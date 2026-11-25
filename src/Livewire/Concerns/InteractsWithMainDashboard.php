@@ -15,7 +15,9 @@ trait InteractsWithMainDashboard
             return;
         }
 
-        if (in_array($widgetKey, $this->enabledWidgets, true)) {
+        $wasEnabled = in_array($widgetKey, $this->enabledWidgets, true);
+
+        if ($wasEnabled) {
             $this->enabledWidgets = array_values(array_filter(
                 $this->enabledWidgets,
                 static fn (string $k): bool => $k !== $widgetKey,
@@ -26,6 +28,13 @@ trait InteractsWithMainDashboard
 
         $this->recomputeLayoutFromService();
         $this->persistCurrentGridState();
+
+        if (! $wasEnabled && in_array($widgetKey, $this->enabledWidgets, true)) {
+            $this->dispatch('main-dashboard-sync', layout: $this->layout, focusWidget: $widgetKey);
+
+            return;
+        }
+
         $this->dispatch('main-dashboard-sync', layout: $this->layout);
     }
 

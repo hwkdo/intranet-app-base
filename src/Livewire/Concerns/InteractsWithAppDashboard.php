@@ -96,7 +96,9 @@ trait InteractsWithAppDashboard
             return;
         }
 
-        if (in_array($widgetKey, $this->enabledWidgets, true)) {
+        $wasEnabled = in_array($widgetKey, $this->enabledWidgets, true);
+
+        if ($wasEnabled) {
             $this->enabledWidgets = array_values(array_filter(
                 $this->enabledWidgets,
                 static fn (string $enabledWidget): bool => $enabledWidget !== $widgetKey
@@ -118,6 +120,12 @@ trait InteractsWithAppDashboard
             $this->layout,
         );
         $this->persistDashboardSettings($this->dashboardAppIdentifier());
+
+        if (! $wasEnabled && in_array($widgetKey, $this->enabledWidgets, true)) {
+            $this->dispatch($this->dashboardSyncEventName(), layout: $this->layout, focusWidget: $widgetKey);
+
+            return;
+        }
 
         $this->dispatch($this->dashboardSyncEventName(), layout: $this->layout);
     }
