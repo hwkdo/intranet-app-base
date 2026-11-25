@@ -62,6 +62,12 @@ new class extends Component
     /** LightRAG-Instanz, deren Kontext vor der Antwort geholt wird. */
     public ?string $lightragInstance = null;
 
+    /** Zentrierte Überschrift in der Glaskarte, nur bei Einbettung. */
+    public ?string $embeddedTitle = null;
+
+    /** Ziel des Maximieren-Icons in der eingebetteten Karte. */
+    public ?string $fullscreenUrl = null;
+
     private ?string $lightRagTurnContext = null;
 
     /**
@@ -71,7 +77,7 @@ new class extends Component
      */
     public string|Provider|null $provider = null;
 
-    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true, $suggestions = null, $appName = null, $lightragInstance = null): void
+    public function mount($model = null, $apiKey = null, $baseUrl = null, $useMcpTools = true, $appIdentifier = null, $provider = null, $injectOpenWebUiUserSystemPrompt = true, $embedded = false, $additionalSystemPrompt = null, $injectTemporalContext = true, $suggestions = null, $appName = null, $lightragInstance = null, $embeddedTitle = null, $fullscreenUrl = null): void
     {
         abort_unless(AiUsage::allowed(), 403);
 
@@ -89,6 +95,12 @@ new class extends Component
         $this->provider = 'openwebui-completions';
         $this->lightragInstance = is_string($lightragInstance) && trim($lightragInstance) !== ''
             ? trim($lightragInstance)
+            : null;
+        $this->embeddedTitle = is_string($embeddedTitle) && trim($embeddedTitle) !== ''
+            ? trim($embeddedTitle)
+            : null;
+        $this->fullscreenUrl = is_string($fullscreenUrl) && trim($fullscreenUrl) !== ''
+            ? trim($fullscreenUrl)
             : null;
         $explicitAppName = is_string($appName) ? trim($appName) : '';
         $this->appName = $explicitAppName !== ''
@@ -653,6 +665,10 @@ new class extends Component
         <div class="absolute -right-24 -bottom-40 size-96 rounded-full bg-[#d0e3f9]/25 blur-3xl"></div>
     </div>
 
+    @if ($embedded && filled($embeddedTitle))
+        <x-intranet-app-base::dashboard.chat-widget-header :title="$embeddedTitle" :href="$fullscreenUrl" />
+    @endif
+
     @unless ($embedded)
         <div class="flex shrink-0 items-center gap-3 border-b border-[#d0e3f9] px-4 py-3 sm:px-5 dark:border-white/10">
             <div class="relative shrink-0">
@@ -704,16 +720,14 @@ new class extends Component
         ])>
             @if (empty($messages) && ! $isStreaming)
                 <div class="flex flex-1 flex-col items-center justify-center py-6 text-center">
-                    <div class="relative mb-6">
-                        <div class="absolute inset-0 animate-pulse rounded-3xl bg-[#a0c7f2]/40 blur-2xl"></div>
-                        <div @class([
-                            'relative flex items-center justify-center rounded-2xl bg-[#073070] text-white shadow-lg shadow-[#073070]/25',
-                            'size-12' => $embedded,
-                            'size-16' => ! $embedded,
-                        ])>
-                            <flux:icon.sparkles variant="solid" :class="$embedded ? 'size-6' : 'size-8'" />
+                    @unless ($embedded)
+                        <div class="relative mb-6">
+                            <div class="absolute inset-0 animate-pulse rounded-3xl bg-[#a0c7f2]/40 blur-2xl"></div>
+                            <div class="relative flex size-16 items-center justify-center rounded-2xl bg-[#073070] text-white shadow-lg shadow-[#073070]/25">
+                                <flux:icon.sparkles variant="solid" class="size-8" />
+                            </div>
                         </div>
-                    </div>
+                    @endunless
 
                     <h2 @class([
                         'font-semibold tracking-tight text-[#073070] dark:text-white',
