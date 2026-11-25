@@ -14,7 +14,7 @@ trait InteractsWithAppDashboard
 
     private const WIDGET_ITEM_COUNT_MAX = 30;
 
-    /** @var array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, supportsItemCount: bool}> */
+    /** @var array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, supportsItemCount: bool}> */
     public array $availableWidgets = [];
 
     /** @var list<string> */
@@ -53,6 +53,7 @@ trait InteractsWithAppDashboard
                 'minW' => $definition->minW,
                 'minH' => $definition->minH,
                 'defaultEnabled' => $definition->defaultEnabled,
+                'mandatory' => $definition->mandatory,
                 'supportsItemCount' => $definition->supportsItemCount,
             ];
         }, $definitions);
@@ -194,7 +195,7 @@ trait InteractsWithAppDashboard
     }
 
     /**
-     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, supportsItemCount: bool}>
+     * @return array<int, array{key: string, title: string, description: string, component: string, defaultW: int, defaultH: int, minW: int, minH: int, defaultEnabled: bool, mandatory: bool, supportsItemCount: bool}>
      */
     public function enabledWidgetDefinitions(): array
     {

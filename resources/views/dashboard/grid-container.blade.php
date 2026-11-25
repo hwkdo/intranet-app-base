@@ -44,6 +44,50 @@
                     lazy
                 />
             </div>
+            @unless($widget['mandatory'] ?? false)
+                <div class="dashboard-widget-remove absolute end-2 top-2 z-30">
+                    <flux:button
+                        type="button"
+                        icon="x-mark"
+                        size="xs"
+                        variant="ghost"
+                        square
+                        tooltip="Entfernen"
+                        aria-label="{{ ($widget['title'] ?? '') !== '' ? $widget['title'].' entfernen' : 'Widget entfernen' }}"
+                        class="text-slate-400! shadow-none! hover:bg-white/70! hover:text-[#073070]! dark:text-white/35! dark:hover:bg-white/10! dark:hover:text-white!"
+                        wire:click.stop="toggleWidget('{{ $widget['key'] }}')"
+                        x-on:pointerdown.stop
+                    />
+                </div>
+            @endunless
         </div>
     @endforeach
 </div>
+
+@once
+    <style>
+        .dashboard-widget-remove {
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 180ms ease;
+        }
+
+        .grid-stack-item:hover > .dashboard-widget-remove,
+        .dashboard-widget-remove:focus-within {
+            pointer-events: auto;
+            opacity: 0.55;
+        }
+
+        .dashboard-widget-remove:focus-within,
+        .grid-stack-item:hover > .dashboard-widget-remove:hover {
+            opacity: 1;
+        }
+
+        @media (hover: none) {
+            .dashboard-widget-remove {
+                pointer-events: auto;
+                opacity: 0.35;
+            }
+        }
+    </style>
+@endonce
