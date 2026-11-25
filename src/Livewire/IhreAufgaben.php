@@ -3,6 +3,7 @@
 namespace Hwkdo\IntranetAppBase\Livewire;
 
 use Hwkdo\IntranetAppBase\Services\TaskService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -43,6 +44,8 @@ class IhreAufgaben extends Component
 
         return [
             "echo-private:App.Models.User.{$userId},.ticket.updated" => 'refreshTasks',
+            "echo-private:App.Models.User.{$userId},.bestellung.changed" => 'refreshTasks',
+            "echo-private:App.Models.User.{$userId},.asset-handover.changed" => 'refreshTasks',
         ];
     }
 
@@ -51,7 +54,7 @@ class IhreAufgaben extends Component
         unset($this->groupedTasks, $this->totalCount);
     }
 
-    public function render(): \Illuminate\Contracts\View\View
+    public function render(): View
     {
         return view('intranet-app-base::livewire.ihre-aufgaben');
     }
